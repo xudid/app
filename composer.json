@@ -1,0 +1,20 @@
+{
+  "name": "xudid/app",
+  "description": "php applocation core",
+  "minimum-stability": "stable",
+  "license": "MIT",
+  "authors": [
+    {
+      "name": "Didier Moindreau",
+      "email": "dmoindreau@gmail.com"
+    }
+  ],
+  "autoload":{
+    "psr-4": {
+        "App\\": "src/"
+    }
+  },
+  "require": {
+    "psr/container": "1.0.0"
+  }
+}
