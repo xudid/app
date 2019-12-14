@@ -9,10 +9,6 @@ use Psr\Container\ContainerInterface;
  */
 class MetaModule extends Module
 {
-  /**
-   * @var bool $isMetamodule
-   */
-  protected bool $isMetamodule = true;
 
   /**
    * @
@@ -28,13 +24,14 @@ class MetaModule extends Module
   {
     parent::__construct($container);
     $this->container = $container;
+    $this->isMetamodule = true;
   }
 
   /**
-   * @method getSubModules()
+   * @method getSubModuleClassNames()
    * @return array
    */
-  public function getSubModules():array
+  public function getSubModuleClassNames():array
   {
     return $this->submodulesclasses;
   }

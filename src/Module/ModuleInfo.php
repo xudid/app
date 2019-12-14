@@ -36,7 +36,7 @@ class ModuleInfo
 
     /**
      * ModuleInfo constructor.
-     * @param string $displayType
+     * @param string $displayType text or icon
      * @param string $display
      * @param string $alternateDisplay
      * @param string $path

@@ -1,100 +1,166 @@
 <?php
+
 namespace App;
 
 use App\Module\Module;
+use Exception;
 use InvalidArgumentException;
+
 use Psr\Container\ContainerInterface;
 use ReflectionClass;
 use ReflectionException;
+use Usage\TestModule;
 
 
 /**
  * Class App
+ * Container must define keys :app_name , "app_name"_modules
  * @package App
  * @author Didier Moindreau <dmoindreau@gmail.com> on 07/11/2019.
  */
 class App
 {
-    private array $modules = [];
-    private array $modulesInstances = [];
-    private ContainerInterface $container;
-    private $router;
-    private $renderer;
-    private $firewall;
+	private array $moduleClassNames = [];
+	private array $modulesInstances = [];
+	private array $modulesInfos = [];
+	private array $errors = [];
+	private ContainerInterface $container;
+	private string $appName;
 
-  /**
-     * App constructor.
-     * @param ContainerInterface $container
-     * @param array $modules
-     */
-    function __construct(ContainerInterface $container, array $modules)
-    {
-        if ($container != null && $container instanceof ContainerInterface) {
-            $this->container = $container;
-            $this->router = $container->get('router');
-            $this->renderer = $container->get('renderer');
-            $this->firewall = $container->get('firewall');
-            $this->modules =$modules??[];
-            foreach ($this->modules as $module) {
-              if ($module instanceof Module) {
-                $m = $this->loadModule($module);
-                $this->loadModuleInfo($m);
-                if ($m->hasDependencies()) {
-                  $this->checkDependencies($m);
-                }
-                $ismeta = $m->isMetaModule();
-                if ($ismeta) {
-                  $submodulesclasses = $m->getSubModules();
-                  foreach ($submodulesclasses as $value) {
-                    $m = $this->loadModule($value);
-                    $this->loadModuleInfo($m);
-                    $this->modulesInstances[$value] = $m;
-                  }
+	/**
+	 * App constructor.
+	 * @param ContainerInterface $container
+	 * @param array $moduleClassNames
+	 */
 
-                } else {
-                  $this->modulesInstances[$module] = $m;
-                }
-              }
-            }
-          return $this;
-        } else {
-          throw new InvalidArgumentException();
-        }
-    }
+	function __construct(ContainerInterface $container)
+	{
 
-    private function loadModule($classname)
-    {
-      try {
-        $r = new ReflectionClass($classname);
-        $m = $r->newInstance($this->container);
-        return $m;
-      } catch (ReflectionException $e) {
-      }
+		if ($container != null && $container instanceof ContainerInterface) {
+			$this->container = $container;
+			$this->appName = $this->container->get("app_name");
+			$this->moduleClassNames = $this->container->get($this->appName . "_modules") ?? [];
 
-    }
-     //todo populate the navbar in AppPage
-    private function loadModuleInfo($module)
-    {
-        $infos = $module->getModuleInfo();
-        if (!is_null($infos)) {
-            $this->renderer->addNavBarItem($infos->getNavBarDisplayType(),
-                $infos->getPath(),
-                $infos->getNavBarDisplay(),
-                $infos->getAlternateDisplay(),
-                $infos->getDisplaySide()
-            );
-        }
-    }
-//Todo move this function in Module class
-    private function checkDependencies($module)
-    {
-        $dependencies = $module->getDependencies();
-        foreach ($dependencies as $dependence) {
-            if (!\array_key_exists($dependence, $this->modulesInstances)) {
-                echo "<br>" . "$dependence is not loaded yet please load it first <br>";
-            }
-        }
-    }
+			foreach ($this->moduleClassNames as $moduleClassName) {
+				if (is_string($moduleClassName)) {
+
+					//Loading module
+					$this->loadModule($moduleClassName);
+				}
+			}
+			return $this;
+			//We don't have a ContainerInterFace  as __construct param throw an Exception
+		} else {
+			throw new InvalidArgumentException();
+		}
+	}
+
+	private function loadModule($moduleClassName)
+	{
+
+		try {
+
+			$moduleReflectionClass = new ReflectionClass($moduleClassName);
+			$module = $moduleReflectionClass->newInstance($this->container);
+
+
+			//Loading module info
+			if ($module !=null && $module instanceof TestModule) {
+
+				$this->loadModuleInfo($module);
+				//Loading module dependencies
+
+				if ($module->hasDependencies() && !($missingDependencies = $module->checkDependencies($this->modulesInstances))) {
+					foreach ($missingDependencies as $missingDependency) {
+						$this->loadModule($missingDependency);
+					}
+				}
+				//Loading submodules for MetaModules
+				if ($module->isMetaModule()) {
+					$subModuleClassNames = $module->getSubModuleClassNames();
+
+					foreach ($subModuleClassNames as $subModuleClassName) {
+
+						if ($moduleClassName != $subModuleClassName) {
+							$subModule = $this->loadModule($subModuleClassName);
+							if ($subModule && $subModule instanceof Module) {
+								$this->loadModuleInfo($subModule);
+								$this->modulesInstances[$subModuleClassName] = $subModule;
+							}
+
+						} else {
+							throw new Exception("Circular reference was detected in submodule referencies");
+						}
+					}
+				}
+				$this->modulesInstances[$moduleClassName] = $module;
+				return $module;
+			}
+
+
+		} catch (ReflectionException $e) {
+			$this->errors[]  = "Module $moduleClassName not Found";
+		}
+
+	}
+
+	//todo populate the navbar in AppPage
+	private function loadModuleInfo($module)
+	{
+		$infos = $module->getModuleInfo();
+		if (!is_null($infos)) {
+			$this->modulesInfos[$module->getScope()] = $infos;
+			/*$this->renderer->addNavBarItem($infos->getNavBarDisplayType(),
+				$infos->getPath(),
+				$infos->getNavBarDisplay(),
+				$infos->getAlternateDisplay(),
+				$infos->getDisplaySide()
+			);*/
+		}
+	}
+
+	/**
+	 * @return array|mixed
+	 */
+	public function getModuleClassNames()
+	{
+		return $this->moduleClassNames;
+	}
+
+	/**
+	 * @return array
+	 */
+	public function getModulesInstances(): array
+	{
+		return $this->modulesInstances;
+	}
+
+	/**
+	 * @return array
+	 */
+	public function getModulesInfos(): array
+	{
+		return $this->modulesInfos;
+	}
+
+	/**
+	 * @return mixed|string|app_name
+	 */
+	public function getAppName()
+	{
+		return $this->appName;
+	}
+
+	/**
+	 * @return array
+	 */
+	public function getErrors(): array
+	{
+		return $this->errors;
+	}
+
+
+
+
 }
 
-?>
