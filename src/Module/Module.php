@@ -2,6 +2,7 @@
 
 namespace App\Module;
 
+use App\App;
 use Psr\Container\ContainerInterface;
 
 /**
@@ -9,7 +10,7 @@ use Psr\Container\ContainerInterface;
  * @package App\Module
  * @author Didier Moindreau <dmoindreau@gmail.com> on 07/11/2019.
  */
-class Module
+class Module implements ModuleInterface
 {
 	/**
 	 * @var bool $isMetamodule
@@ -19,7 +20,7 @@ class Module
 	/**
 	 * @var ModuleInfo $moduleInfo
 	 */
-	protected ModuleInfo $moduleInfo;
+	protected ?ModuleInfo $moduleInfo = null;
 
 	/**
 	 * @var array $dependencies
@@ -36,18 +37,14 @@ class Module
 
 	protected string $name = "";
 
-	/**
-	 * Module constructor.
-	 * @param ContainerInterface $container
-	 */
-	function __construct(ContainerInterface $container)
+    /**
+     * Module constructor.
+     * @param App $app
+     */
+	function __construct(App $app)
 	{
-
-		if ($container != null && $container instanceof ContainerInterface) {
-			$this->container = $container;
-			$config = $container->get("module_".$this->name."_config");
-			$this->scope = $config["scope"]??$this->name;
-		}
+        $config = $app->getModuleConfiguration($this->name);
+        $this->scope = $config["scope"] ?? str_replace(' ', '-', $this->name);
 	}
 
 	/**
@@ -127,5 +124,30 @@ class Module
 	{
 		return $this->dependencies;
 	}
+
+    public function getSubModuleClassNames(): array
+    {
+        // TODO: Implement getSubModuleClassNames() method.
+    }
+
+    public function install()
+    {
+        // TODO: Implement install() method.
+    }
+
+    public function update()
+    {
+        // TODO: Implement update() method.
+    }
+
+    /**
+     * @return string
+     */
+    public function getName(): string
+    {
+        return $this->name;
+    }
+
+
 }
 
