@@ -4,8 +4,6 @@ namespace App\CoreModule\LoggingModule;
 
 use App\App;
 use App\Module\Module;
-use Monolog\Handler\StreamHandler;
-use Monolog\Logger;
 
 /**
  * Class LoggingModule
@@ -13,17 +11,12 @@ use Monolog\Logger;
  */
 class LoggingModule extends Module
 {
-    /**
-     * LoggingModule constructor.
-     * @param App $app
-     */
-    public function __construct(App $app)
+    protected static string $name = 'Logging';
+    protected static string $description = <<<TEXT
+Provides application activities tracability in a file
+TEXT;
+    public static function getDir(): string
     {
-        $this->name = "logging";
-        $logger = new Logger('app');
-        $logger->pushHandler(new StreamHandler($app->getTempDir().DIRECTORY_SEPARATOR.'app.log',Logger::DEBUG));
-        $app->addContainerDefinition('logger', $logger);
-        parent::__construct($app);
-        $logger->info('logging module initialized');
+        return __DIR__;
     }
 }
