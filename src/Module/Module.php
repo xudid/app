@@ -3,7 +3,9 @@
 namespace App\Module;
 
 use App\App;
-use Psr\Container\ContainerInterface;
+use Entity\Database\DaoInterface;
+use Entity\Database\DataSourceInterface;
+use Entity\Migrations\PhinxAdapter;
 
 /**
  * Class Module
@@ -12,7 +14,7 @@ use Psr\Container\ContainerInterface;
  */
 class Module implements ModuleInterface
 {
-	/**
+    /**
 	 * @var bool $isMetamodule
 	 */
 	protected bool $isMetamodule = false;
@@ -26,28 +28,43 @@ class Module implements ModuleInterface
 	 * @var array $dependencies
 	 */
 	protected array $dependencies = [];
-	/**
-	 * @var ContainerInterface
-	 */
-	protected ContainerInterface $container;
+
 	/**
 	 * @var string $scope
 	 */
 	private string $scope = "scope";
 
-	protected string $name = "";
+	protected static string $name = '';
+	protected static string $description = '';
 
     /**
      * Module constructor.
      * @param App $app
      */
-	function __construct(App $app)
+	function __construct()
 	{
-        $config = $app->getModuleConfiguration($this->name);
-        $this->scope = $config["scope"] ?? str_replace(' ', '-', $this->name);
+
 	}
 
-	/**
+    /**
+     * @return string
+     */
+    public function getName(): string
+    {
+        return static::$name;
+    }
+
+    /**
+     * @return string
+     */
+    public static function getDescription(): string
+    {
+        return static::$description;
+    }
+
+
+
+    /**
 	 * @return bool
 	 */
 	public function isMetaModule()
@@ -55,7 +72,7 @@ class Module implements ModuleInterface
 		return $this->isMetamodule;
 	}
 
-	/**
+    /**
 	 * @return string
 	 */
 	public function getScope()
@@ -63,12 +80,12 @@ class Module implements ModuleInterface
 		return $this->scope;
 	}
 
-	public function getModuleInfo()
+    public function getModuleInfo()
 	{
 		return $this->moduleInfo;
 	}
 
-	/**
+    /**
 	 * @param $displayType
 	 * @param string $display
 	 * @param string $alternateDisplay
@@ -91,7 +108,7 @@ class Module implements ModuleInterface
 		$this->moduleInfo->setDisplaySide($displayside);
 	}
 
-	/**
+    /**
 	 * @return bool
 	 */
 	public function hasDependencies(): bool
@@ -99,8 +116,8 @@ class Module implements ModuleInterface
 		return count($this->dependencies) > 0;
 	}
 
-	/**
-	 * @method heckDependencies(array $modulesInstances):bool
+    /**
+	 * @method checkDependencies(array $modulesInstances):bool
 	 * @param array $modulesInstances
 	 * @return bool|array : true if all dependencies are already loaded , an
 	 * array of missing dependencies else
@@ -117,7 +134,7 @@ class Module implements ModuleInterface
 		return empty($missingDependencies)?true:$missingDependencies;
 	}
 
-	/**
+    /**
 	 * @return array
 	 */
 	public function getDependencies(): array
@@ -125,29 +142,40 @@ class Module implements ModuleInterface
 		return $this->dependencies;
 	}
 
+
+
+
     public function getSubModuleClassNames(): array
     {
         // TODO: Implement getSubModuleClassNames() method.
     }
 
-    public function install()
+    public function getMigrationsPath()
     {
-        // TODO: Implement install() method.
+        // here or in DI definition above
     }
 
-    public function update()
+    public static function  install(DaoInterface $dao, string $environment)
+    {
+        $adapter = new PhinxAdapter($dao, static::getDir(), $environment);
+        $adapter->setDbName('brickdb');
+        $adapter->enableOutPut();
+        $adapter->run();
+        //dump($adapter->getOutput());
+
+    }
+
+
+
+    public function update(DataSourceInterface $dataSource, string $environment)
     {
         // TODO: Implement update() method.
     }
 
-    /**
-     * @return string
-     */
-    public function getName(): string
+
+    public function remove(DataSourceInterface $dataSource, string $environment)
     {
-        return $this->name;
+        // TODO: Implement remove() method.
     }
-
-
 }
 

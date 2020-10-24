@@ -4,6 +4,9 @@
 namespace App\Module;
 
 
+use Entity\Database\DaoInterface;
+use Entity\Database\DataSourceInterface;
+
 interface ModuleInterface
 {
     /**
@@ -47,6 +50,7 @@ interface ModuleInterface
 
     public function getSubModuleClassNames():array;
 
-    public function install();
-    public function update();
+    public static function install(DaoInterface $dao, string $environment);
+    public function update(DataSourceInterface $dataSource, string $environment);
+    public function remove(DataSourceInterface $dataSource, string $environment);
 }
