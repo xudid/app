@@ -1,165 +1,268 @@
 <?php
-namespace Brick\Roles\Controller;
-use Brick\Controller\ModuleController;
-use Brick\Ui\Table\TableLegend;
 
-use Brick\Roles\Model\{RolesEntity,Role};
-use Brick\Views\{
-	DataTableView,
-	FormFactory,
-	EntityViewFactory,
-	SearchViewFactory
-};
+namespace App\CoreModule\RoleModule\Controller;
 
-use Brick\Ui\Buttons\{AddButton};
+
+use App\Controller;
+use App\CoreModule\ManagerModule\Model\Action;
+use App\CoreModule\ManagerModule\Model\Module;
+use App\CoreModule\RoleModule\Model\Role;
+use App\CoreModule\RoleModule\Model\RolesManager;
+use App\CoreModule\RoleModule\Views\ActionEditionForm;
+use App\CoreModule\RoleModule\Views\ModuleEditionForm;
+use Entity\SearchBinder;
+use GuzzleHttp\Psr7\ServerRequest;
+use ReflectionException;
+use Ui\HTML\Elements\Bases\Span;
+use Ui\HTML\Elements\Nested\A;
+use Ui\Views\DataTableView;
+use Ui\Views\EntityView;
+use Ui\Views\FormFactory;
+use Ui\Views\SearchViewFactory;
+use Ui\Widgets\Button\AddButton;
+use Ui\Widgets\Icons\MaterialIcon;
+use Ui\Widgets\Table\ColumnsFactory;
+use Ui\Widgets\Table\DivTable;
+use Ui\Widgets\Table\TableLegend;
 
 /**
- *
+ * Class RolesController
+ * @package App\CoreModule\RoleModule
  */
-class RolesController implements ModuleController
+class RolesController extends Controller
 {
-  private $namespace="Brick\Roles\Model\Role";
+    private $modelNamespace = 'App\CoreModule\RoleModule\Model\Role';
 
-  function __construct($container)
-  {
-		$this->container=$container;
-  }
+    function __construct()
+    {
+        parent::__construct();
+    }
 
-  /**
-	 * Return a form to get new user datas
-	 */
-	public function new(){
-		$ff = new FormFactory($this->namespace,"default","create","POST");
-		return $ff->getForm();
+    /**
+     * Return a form to get new user datas
+     */
+    public function new()
+    {
+        try {
+            $factory = new FormFactory(Role::class);
+            $factory->setFormTitle('Nouveau role');
+            return $factory->getForm($this->app);
+        } catch (\ReflectionException $e) {
+        }
 
-	}
-/**
- * @param array $params  : params to update a user
- */
-	public function edit($params){
-		$id = $params[0];
-		$entity = new RolesEntity($this->container);
-		$role = $entity->findById($id);
-		if($role ==false){return $this->showError("entity not found");}
+    }
 
-		$ettf = new FormFactory($role,"default","update","POST");
-		$ettf->setFormTitle("Edit ");
-		$ef = $ettf->getForm();
+    /**
+     * @param array $params : params to update a user
+     */
+    public function edit($id)
+    {
+        $manager = $this->app->getModelManager(Role::class);
+        $role = $manager->findById($id);
+        if ($role == false) {
+            return $this->showError("Role not found");
+        }
 
-		return  $ef;
-	}
-/**
- * @param array $params  : params to show a user
- */
-	public function show($params)
-  {
-		//print_r("show the role");
-		$id = $params[0];
-		$entity = new RolesEntity($this->container);
-		$role = $entity->findById($id);
-		if($role ==false){return $this->showError("entity not found");}
-		$this->entityViewGenerator = new EntityViewFactory($role,null);
-		$this->entityViewGenerator->setCurrentPath("/roles/:id");
-	  $ev = $this->entityViewGenerator->getView();
-	  return $ev;
-	}
+        try {
+            $factory = new FormFactory($role);
+            $factory->withAction('/roles/update');
+            $factory->setFormTitle("Edition role ");
+            return $factory->getForm($this->app);
+        } catch (ReflectionException $e) {
+            $this->app->internalError('Error in : ' . __CLASS__ . ', ' . __METHOD__);
+        }
+    }
 
-/**
- * Create a new role
- *only display the sentence  :
- *"creating user please wait"
- */
-	public function create(){
-		$role = new Role();
-		$role->setName($_POST['role_name']);
-		$role->setDescription($_POST['role_description']);
-		var_dump($role);
-		$entity = new RolesEntity($this->container);
-		$entity->create($role);
-	}
-/**
- * @param array $params  : params to delete a user
- */
-	public function delete($params)
-	{
-		$id = $params[0];
-		$entity = new RolesEntity();
-		$entity->delete($id);
-		echo "You have deleted $this->namespace with id :$id";
-	}
-	/**
-	 * Update user with
-	 * @param array $params parametes to update user
-	 */
-	public function	update($params){
-		$id = $params[0];
+    /**
+     * @param array $params : params to show a user
+     */
+    public function show($params)
+    {
+        $id = $params[0];
+        $viewFactory = $this->entityViewFactory(Role::class, $id);
+        $viewFactory->basic();
+        $manager = $this->modelManager(Role::class);
+        $builder = $manager->builder();
+        $request = $builder->select('modules.*')
+            ->from('modules')
+            ->join('roles_modules', 'modules.id', 'modules_id')
+            ->where('roles_id', '=', $id)
+            ->where('authorized', '=', 1);
+        $results = $builder->execute($request);
+        $url = $this->router->generateUrl('roles_modules',['id' => $id], 'GET' );
+        $icon = new MaterialIcon('build');
+        $icon->color('white')->size('xs');
+        $span = new Span('Modules');
+        $span->setAttribute('style', 'vertical-align:bottom;');
+        $legendA = (new A($icon . ' ' . $span, $url))->setClass('btn btn-xs btn-success mb-1');
+        $table = new DivTable(
+            [new TableLegend($legendA)],
+            ColumnsFactory::make(Module::class),
+            $results ?: [],
+            false,
+            '/modules'
 
-		$entity = new RolesEntity($this->container);
-		$role = $entity->findById($id);
-		if($role ==false){return $this->showError("entity not found");}
-		$text = "Are you sure to update this $this->namespace with id :$id";
-		$role->setName($_POST['role_name']);
-		$role->setDescription($_POST['role_description']);
-		$entity->update($role);
-		return $text;
-	}
+        );
+        //$viewFactory->filter(Module::class)->where('authorized', '=', 1)->
+        $viewFactory->addAssociationView($table);
+        $viewFactory->setCurrentPath("/roles/:id");
+        $ev = $viewFactory->getView();
+        return $ev;
+    }
 
+    /**
+     * Create a new role
+     *only display the sentence  :
+     *"creating user please wait"
+     */
+    public function create()
+    {
+        $role = new Role([]);
+        $role->setName($_POST['role_name']);
+        $role->setDescription($_POST['role_description']);
+        $manager = $this->app->getModelManager(Role::class);
+        $manager->insert($role);
+        $this->app->redirectTo('/roles');
+    }
 
-/**
- * Search Users
- */
-	public function searchform(){
+    /**
+     * @param array $params : params to delete a user
+     */
+    public function delete($params)
+    {
+        $id = $params[0];
+        $manager = $this->app->getModelManager(Role::class);
+        $manager->delete($id);
+        $this->app->redirectTo('/roles/');
+    }
 
+    /**
+     * Update user with
+     * @param array $params parametes to update user
+     */
+    public function update($params)
+    {
+        $id = $params[0];
 
-		 $etsf = new SearchViewFactory($this->namespace,null,"searchresult","POST");
-		 $etsf->setViewTitle("Search Role");
-		 $sf = $etsf->getSearchView();
-		 return $sf;
-	}
-
-	public function searchresult(){
-		$params=[];
-		$userEntity = new RolesEntity($this->container);
-		$dtv = (new DataTableView($this->container,$this->namespace,null))->withClickableRows("/roles");
-		if(isset($_POST["name"])&&$_POST["name"]!="")
-		{
-			$params["name"] = $_POST["name"];
-			$dtv->where($params);
-		}
-
-		if(isset($_POST['description'])&&$_POST['description']!="")
-		{
-			$params["description"] = $_POST["description"];
-			$dtv->where($params);
-
-		}
-		$dtv->setTitle("<h2>Resultat de la recherche</h2>");
-		return $dtv->getView();
-	}
-/**
- * Return a view with the user list
- */
-	public function index(){
-
-		$dtv = (new DataTableView($this->container,$this->namespace,null))->withClickableRows("/roles");
-		$legendTitle =new TableLegend("<h2>Liste des roles</h2>",TableLegend::TOP_LEFT);
-		$addButton = new AddButton();
-		$addButton->setOnClick("location.href='/roles/new'");
-		$legendButton = new TableLegend($addButton,TableLegend::TOP_RIGHT);
-		$dtv->addALegend($legendTitle);
-		$dtv->addALegend($legendButton);
-
-		return $dtv->getView();
-	}
+        $manager = $this->app->getModelManager(Role::class);
+        $role = $manager->findById($id);
+        if ($role == false) {
+            return $this->showError("Role not found");
+        }
+        $text = "Are you sure to update this $this->modelNamespace with id :$id";
+        $role->setName($_POST['role_name']);
+        $role->setDescription($_POST['role_description']);
+        $manager->update($role);
+        return $text;
+    }
 
 
-/**
- * Return an Error message
- * @param string $message the error message to display
- */
-	public function showError($message){
-		return $message;
-	}
+    /**
+     * Search Users
+     */
+    public function search()
+    {
+
+        $view = new EntityView();
+        $searchFactory = new SearchViewFactory(Role::class);
+        $searchFactory->withAction('search');
+        $searchFactory->setTitle("Search Role");
+        $searchView = $searchFactory->getView($this->app);
+
+        try {
+            $searchBinder = new SearchBinder(ServerRequest::fromGlobals());
+            $params = $searchBinder->bind(Role::class);
+            $dtv = (new DataTableView(Role::class, $this->app->getModelManager(Role::class)))
+                ->withBaseUrl("/roles");
+            $dtv->where($params);
+
+        } catch (ReflectionException $e) {
+            $this->app->internalError('Error in : ' . __CLASS__ . ', ' . __METHOD__);
+
+        } catch (\Exception $e) {
+            $this->app->internalError('Error in : ' . __CLASS__ . ', ' . __METHOD__);
+        }
+
+        $dtv->setTitle("<h2>Resultat de la recherche</h2>");
+        return $view->feed($searchView, $dtv->getView($this->app));
+    }
+
+
+    /**
+     * Return a view with the user list
+     */
+    public function index()
+    {
+        try {
+            $dtv = ($this->tableFactory(Role::class))->withBaseUrl("/roles");
+            $dtv->setRouter($this->router);
+            $legendTitle = new TableLegend("<h2>Liste des roles</h2>", TableLegend::TOP_LEFT);
+            $addButton = new AddButton();
+            $addButton->size('xs')->setOnClick("location.href='/roles/new'");
+            $legendButton = new TableLegend($addButton, TableLegend::TOP_RIGHT);
+            $dtv->addALegend($legendTitle);
+            $dtv->addALegend($legendButton);
+            return $dtv->getView($this->app);
+        } catch (ReflectionException $e) {
+            $this->app->internalError('Error in : ' . __CLASS__ . ', ' . __METHOD__);
+
+        }
+
+    }
+
+    public function editModules($id)
+    {
+        $form = new ModuleEditionForm($this->router, $this->modelManager(Role::class), $this->modelManager(Module::class), $id);
+        return $this->render($form);
+    }
+
+    public function addModules($roleId)
+    {
+        $module = new Module();
+        $this->requestHandler->handle($module, 'modules');
+        $roleManager = $this->modelManager(Role::class, RolesManager::class);
+        $role = $roleManager->findById($roleId);
+        $roleManager->addModule($role, $module);
+        $this->routeTo('roles_modules', ['id' => $roleId]);
+    }
+
+    public function deleteModules($roles_id, $modules_id)
+    {
+        $roleManager = $this->modelManager(Role::class, RolesManager::class);
+        $roleManager->deleteModule($roles_id, $modules_id);
+        $this->routeTo('roles_modules', ['id' => $roles_id]);
+    }
+
+    public function editActions($roleId, $moduleId)
+    {
+        $form = new ActionEditionForm($this->router, $this->modelManager(Role::class), $roleId, $moduleId);
+        return $this->render($form);
+    }
+
+    public function addActions($roleId, $moduleId)
+    {
+        $action = new Action();
+        $this->requestHandler->handle($action, 'actions');
+        $roleManager = $this->modelManager(Role::class, RolesManager::class);
+        $role = $roleManager->findById($roleId);
+        $roleManager->addAction($role, $action);
+        $this->routeTo('roles_actions', ['role_id' => $roleId, 'module_id' => $moduleId]);
+    }
+
+    public function deleteActions($roleId, $moduleId, $actionId)
+    {
+        $roleManager = $this->modelManager(Role::class, RolesManager::class);
+        $roleManager->deleteModule($roleId, $moduleId);
+        $this->routeTo('roles_modules', ['id' => $roleId]);
+    }
+
+
+    /**
+     * Return an Error message
+     * @param string $message the error message to display
+     */
+    public function showError($message)
+    {
+        return $message;
+    }
 }
-
-?>
