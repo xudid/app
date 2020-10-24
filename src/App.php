@@ -2,23 +2,29 @@
 
 namespace App;
 
-use App\Pipeline\Pipeline;
+use App\CoreModule\AuthorizationModule\Controller\AuthorizationController;
+use App\CoreModule\AuthorizationModule\Model\Autorization;
+use App\CoreModule\RoleModule\Model\Role;
+use App\CoreModule\UserModule\Model\User;
+use App\CoreModule\UserModule\Views\UserAuthFormFilter;
 use App\Module\Module;
-use App\Module\ModuleInterface;
+use App\Pipeline\Pipeline;
+use App\Session\Session;
 use DI\ContainerBuilder;
+use DI\DependencyException;
+use DI\NotFoundException;
 use Entity\Database\Dao;
 use Entity\Database\Mysql\MysqlDataSource;
-use Entity\EntityFactory;
+use Entity\Model\ManagerInterface;
+use Entity\Model\ModelManager;
 use Exception;
 use GuzzleHttp\Psr7\Response;
 use GuzzleHttp\Psr7\ServerRequest;
-use Middleware\ControllerDispatcher;
 use Psr\Container\ContainerInterface;
 use Psr\Http\Server\MiddlewareInterface;
-use ReflectionClass;
-use ReflectionException;
-use Ui\HTML\Elements\Bases\h1;
-use Ui\Views\Page;
+use Renderer\Renderer;
+use Router\Route;
+use Router\Router;
 use function Http\Response\send;
 
 
@@ -30,58 +36,150 @@ use function Http\Response\send;
  */
 class App
 {
+    public static $configDirectory;
     private array $moduleClassNames = [];
     private array $modulesInstances = [];
     private array $modulesInfos = [];
     private array $errors = [];
-    private ContainerInterface $container;
+    private static ContainerInterface $container;
     private string $appName;
-    private array $containerDefinitions = [];
+    private static string $name;
     private Pipeline $pipeline;
-    private string $tempDir;
-    private string $appConfigDir;
+    private static string $root;
+    private static string $temp;
+    public static string $modules;
+    private static  $config;
+    private static $instance;
+    /**
+     * @var ContainerBuilder
+     */
+    private ContainerBuilder $containerBuilder;
+    private string $rootDir;
 
     /**
      * App constructor.
      *
      * @throws \DI\DependencyException
      * @throws \DI\NotFoundException
+     * @throws Exception
      */
 
-    function __construct()
+    private function __construct()
     {
-        $config = require_once('../config/config.php');
-        $this->appName = $config['app_name'];
-        $this->appConfigDir = $config['config_dir'];
-        $this->tempDir = $config['temp_dir'];
+        // make convention on definitions path
+        if (!file_exists('../config/config.php')) {
+            throw new Exception('No config file');
+        }
+        self::$instance = $this;
+        self::$config = require_once('../config/config.php');
+        self::$root = self::$config['root_dir'];
+        self::$temp = self::$config['temp_dir'];
+        self::$modules = self::$config['site_modules'];
+        $this->appName = self::$config['app_name'];
+        $this->appConfigDir = self::$config['config_dir'];
+        self::$configDirectory = self::$config['config_dir'];
         $this->containerBuilder = new ContainerBuilder();
-        $this->moduleClassNames = $config['modules'] ?? [];
-
+        $this->moduleClassNames = array_merge(
+            self::$config['core_modules'] ?? [],
+            self::$config['app_modules'] ?? []
+        );
+        $this->containerBuilder->addDefinitions(require self::$config['config_dir'] . DIRECTORY_SEPARATOR . 'di.php');
         foreach ($this->moduleClassNames as $moduleClassName) {
             if (is_string($moduleClassName)) {
-                //Loading module
-                $this->loadModule($moduleClassName);
-            }
-        }
-        $controllerDispatcher = new ControllerDispatcher($this);
-        $this->addContainerDefinition('controller_dispatcher', $controllerDispatcher);
-        $this->containerBuilder->addDefinitions($this->containerDefinitions);
-        $this->container = $this->containerBuilder->build();
-
-        // create middleware pipeline
-        $this->pipeline = new Pipeline();
-        $pipes = $config['pipeline'];
-        foreach ($pipes as $pipe) {
-            $pipe = $this->container->get($pipe);
-            if ($pipe instanceof MiddlewareInterface) {
-                $this->pipeline->pipe($pipe);
+                $this->loadContainerDefinitions($moduleClassName);
             }
         }
 
-        // init request and store it in container
 
-        return $this;
-        //We don't have a ContainerInterFace  as __construct param throw an Exception
+
+        try {
+                self::$container = $this->containerBuilder->build();
+            foreach ($this->moduleClassNames as $moduleClassName) {
+                if (is_string($moduleClassName)) {
+                    $this->loadRoutes($moduleClassName);
+                }
+
+
+            }
+            foreach ($this->moduleClassNames as $moduleClassName) {
+                if (is_string($moduleClassName)) {
+                    $this->installModule($moduleClassName);
+                }
+            }
+            $authorizationcontroller = self::$container->get(AuthorizationController::class);
+            $modules =$authorizationcontroller->getAuthorizedModules();
+
+            // create middleware pipeline
+            $this->pipeline = self::$container->get(Pipeline::class);
+            $pipes = self::$config['pipeline'];
+            foreach ($pipes as $pipe) {
+                $pipe = self::$container->get($pipe);
+                if ($pipe instanceof MiddlewareInterface) {
+                    $this->pipeline->pipe($pipe);
+                }
+            }
+        } catch (Exception $e) {
+            dump($e);
+        }
+
+    }
+
+    public static function getInstance()
+    {
+        if(is_null(self::$instance)) {
+            self::$instance = new App();
+        }
+        return self::$instance;
+    }
+
+    public static function __callStatic($name, $args)
+    {
+        if ($name == 'container') {
+            return self::$container;
+        }
+        if (self::$container->has($name)) {
+            try {
+                return self::$container->get($name);
+            } catch (DependencyException $e) {
+                dump(__CLASS__ . __METHOD__);
+            } catch (NotFoundException $e) {
+                dump(__CLASS__ . __METHOD__);
+
+            }
+        }
+
+    }
+
+    public static function autorize(string $moduleClass, array $types =[])
+    {
+        // un utilisateur est autorisé a faire 0a n action appartenant a un module
+        // Table User Table des modules Tables actions Table des actions
+        // table Module primary key id  Module namespace
+        // table Action id pk module_id fk name
+        // table Autorization id User id Action fk
+
+        $actions = AuthorizationController::authorizedAction($moduleClass);
+        $autorizations = [];
+        foreach ($actions as $action) {
+            if((count($types) == 0)) {
+                $autorizations[$action['type']] = $action['route_name'];
+            } elseif(in_array($action['type'], $types)) {
+                $autorizations[$action['type']] = $action['route_name'];
+            }
+
+        }
+        return$autorizations;
+
+    }
+
+    public function accessModules()
+    {
+        $user = Session::get('user');
+        $controller = App::get(AuthorizationController::class);
+        if ($user) {
+            return[Stock\StockModule::class];
+        }
+        return [CoreModule\AuthModule\AuthModule::class];
     }
 
     /**
@@ -89,15 +187,22 @@ class App
      */
     public function getModuleConfiguration(string $moduleName)
     {
-        $configFileName = $this->appConfigDir . '/modules/' . $moduleName . '.php';
+        $configFileName = self::$config . '/modules/' . $moduleName . '.php';
         return file_exists($configFileName) ? require_once $configFileName : [];
     }
 
-    private function loadModule($moduleClassName)
+    /*private function loadModule($moduleClassName)
     {
+
         try {
             $moduleReflectionClass = null;
             try {
+                    if (class_exists($moduleClassName) && is_subclass_of($moduleClassName, Module::class)) {
+                        $this->containerBuilder->addDefinitions($moduleClassName::getDefinitions());
+                        foreach ($moduleClassName::getRoutes() as $route) {
+                            dump($route);
+                        }
+                    }
                 $moduleReflectionClass = new ReflectionClass($moduleClassName);
                 $module = $moduleReflectionClass->newInstance($this);
                 //Loading module info
@@ -139,6 +244,10 @@ class App
         } catch (ReflectionException $e) {
             $this->errors[] = "Module $moduleClassName not Found";
         }
+    }*/
+    private function initModule($className)
+    {
+
     }
 
     //todo populate the navbar in AppPage
@@ -156,6 +265,7 @@ class App
             );*/
         }
     }
+
     /**
      * @return array|mixed
      */
@@ -196,31 +306,12 @@ class App
         return $this->errors;
     }
 
-    public function addContainerDefinition($key, $definition)
-    {
-        $this->containerDefinitions[$key] = $definition;
-        return $this;
-    }
-
-    public function addRoute()
-    {
-
-    }
-
-
-    public function addFirtewallRule()
-    {
-
-    }
-
     public function run()
     {
         $response = new Response();
         $request = ServerRequest::fromGlobals();
-        $response = $this->pipeline->process($request,$response);
-
-        if($response)
-        {
+        $response = $this->pipeline->process($request, $response);
+        if ($response) {
             $statuscode = $response->getStatusCode();
             switch ($statuscode) {
                 case 200:
@@ -235,12 +326,11 @@ class App
 
                 case 404:
 
-                    /*$view = $renderer->render("404.html",null,"../vendor/Brick/src/ErrorPage");
+                    //$view = $renderer->render("404.html",null,"../vendor/Brick/src/ErrorPage");
 
                     $response->getBody()->rewind();
 
-                    $response->getBody()->write($view);*/
-
+                    $response->getBody()->write('404 Not Found');
 
 
                     send($response);
@@ -254,73 +344,157 @@ class App
         }
     }
 
-    public function get(string $key)
+    public static function get(string $key)
     {
-        if(array_key_exists($key, $this->containerDefinitions)) {
-            return $this->containerDefinitions[$key];
-        } elseif (!is_null($this->container) && $this->container->has($key)) {
-            return $this->container->get($key);
+        if (self::$container && self::$container->has($key)) {
+            return self::$container->get($key);
         } else {
             return null;
         }
     }
 
-    public function render($view)
+    public static function render($view)
     {
-        $page = new Page();
-        $page->importCss(
-            '/css/ui.css',
-            "https://stackpath.bootstrapcdn.com/bootstrap/4.4.1/css/bootstrap.min.css"
-        );
-        $page->feedBody((new H1('Application setup'))->setClass('ml-4'), $view);
-        return $page;
+        $renderer = self::get(Renderer::class);
+        return $renderer->setAppPage(new Page())
+            ->renderAppPage($view);
     }
 
     /**
      * @return mixed
      */
-    public function getAppConfigDir()
+    public static function getConfigDir()
     {
-        return $this->appConfigDir;
+        return self::$config['config_dir'] ;
     }
 
-    /**
-     * @return mixed
-     */
-    public function getTempDir()
+    public static function setCongigDir(string $dir)
     {
-        return $this->tempDir;
+        if (file_exists($dir)) {
+            self::$config['config_dir'] = $dir;
+        }
+    }
+
+    public static function tempDir()
+    {
+        return self::$temp;
+    }
+
+    public static function send($content)
+    {
+        $response = new Response();
+        $response->getBody()->rewind();
+
+        $response->getBody()->write($content);
+        send($response);
+        exit();
     }
 
     public function redirectTo(string $url)
     {
-        send(new Response(302,['Location' => $url]));
+        send((new Response())->withStatus(302)->withHeader('Location', $url));
+        exit();
     }
 
-    public function getEntity(string $class)
+    public static function redirectToRoute(string $routeName, array $params = [])
     {
-        $entity = null;
-        $dataSource = new MysqlDataSource('mysql', [
-            'mysql.server' => 'localhost',
-            'mysql.port' => '3306',
-            'mysql.database' => 'brickdb',
-            'mysql.user' => 'root',
-            'mysql.password' => '',
-            'mysql.attributes' => [],
-
-        ]);
-        $dao = new Dao($dataSource,$class);
-        $entityFactory = new EntityFactory($dao);
-        try {
-            $entity = $entityFactory->getEntity($class);
-        } catch (Exception $e) {
-            var_dump($e->getMessage());
-            // logging something if in debug mode
-            // else return http 500 response
-        }
-        return $entity;
+        $router = self::get('router');
+        Router::class;
+        $url = $router->generateUrl($routeName, $params);
+        send((new Response())->withStatus(302)->withHeader('Location', $url));
+        exit();
     }
 
+    public function getModelManager(string $classNamespace, string $managerInterfaceName = '') : ManagerInterface
+    {
+        try {
+            $factory = self::get('model_manager_factory');
+            if(class_exists($managerInterfaceName)) {
+                $factory->setManagerInterface($managerInterfaceName);
 
+                return $factory->getManager($classNamespace);
+            } else {
+                return $factory->getManager($classNamespace);
+            }
+
+        } catch (Exception $e) {
+            App::render('Failed to create model manager for : ' . $classNamespace);
+        }
+    }
+
+    /**
+     * @param string $class
+     * @return object|null
+     * @throws Exception
+     */
+
+    public function internalError(string $message)
+    {
+        dump($message);
+    }
+
+    public function showInfo(string $message)
+    {
+        // Todo return a 200 response displaying info $message
+    }
+
+    private function loadContainerDefinitions($className)
+    {
+        if (class_exists($className) && is_subclass_of($className, Module::class)) {
+            $dir =$className::getDir();
+            if (file_exists($dir)) {
+                $diFileName = $dir . DIRECTORY_SEPARATOR . 'di.php';
+                if (file_exists($diFileName)) {
+                    $definitions = require $diFileName;
+                    $this->containerBuilder->addDefinitions($definitions);
+                }
+            }
+        }
+    }
+
+    private function loadRoutes(string $moduleClassName)
+    {
+        $router = self::$container->get('router');
+        $router->get('/','default', function(){
+            return self::render('Root page');
+        });
+        $router->get('/home','home', function(){
+            return self::render('Home sweet home');
+        });
+        if (class_exists($moduleClassName) && is_subclass_of($moduleClassName, Module::class)) {
+            $dir =$moduleClassName::getDir();
+            if (file_exists($dir)) {
+                $routesFileName = $dir . DIRECTORY_SEPARATOR . 'routes.php';
+                if (file_exists($routesFileName)) {
+                    $routes = require $routesFileName;
+                    $routes = is_array($routes) ? $routes : [];
+                    foreach ($routes as $route) {
+                        $method = $route['method'] ?: '';
+                        if ($router->authorize($method)) {
+                            $routes[$method][$route['name']] = Route::hydrate($route);
+                        }
+                    };
+                    $router->setRoutes($routes);
+                }
+            }
+
+        }
+    }
+
+    private function installModule(string $moduleClassName)
+    {
+        if (class_exists($moduleClassName) && is_subclass_of($moduleClassName, Module::class)) {
+            $dir = $moduleClassName::getDir();
+            if (file_exists($dir)) {
+                $migrationsDir = $dir . DIRECTORY_SEPARATOR . 'migrations';
+                if (file_exists($migrationsDir)) {
+                    try {
+                        $moduleClassName::install((new Dao($this->get(MysqlDataSource::class),'')), 'development');
+                    } catch (Exception $e) {
+                    }
+                }
+            }
+        }
+    }
 }
 
