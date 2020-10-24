@@ -83,9 +83,6 @@ class Pipeline implements RequestHandlerInterface
 
     $this->response =  $this->process($this->request,$response);
   }
-
       return $this->response;
-
-
   }
 }
