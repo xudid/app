@@ -22,15 +22,20 @@
     "psr/container": "1.0.0",
     "php-di/php-di": "6.0.10",
     "monolog/monolog": "^2.0",
-    "robmorgan/phinx": "^0.11.3",
+    "robmorgan/phinx": "^0.12.1",
     "guzzlehttp/psr7": "^1.6",
     "http-interop/response-sender": "^1.0",
-    "xudid/entity": "dev-master"
+    "xudid/entity": "dev-master",
+    "mongodb/mongodb": "^1.6",
+    "xudid/renderer": "dev-master",
+    "twbs/bootstrap": "4.5.0",
+    "xudid/core": ">=0.0.17"
   },
   "require-dev": {
     "xudid/ui": "dev-master",
     "xudid/router": "^0.03.0",
     "doctrine/orm": "^2.7",
-    "psr/http-server-middleware": "^1.0"
+    "psr/http-server-middleware": "^1.0",
+    "symfony/var-dumper": "^5.0"
   }
 }
