@@ -2,74 +2,43 @@
 
 namespace App\CoreModule\UserModule\Model;
 
+use Entity\Model\Model;
 
-use App\CoreModule\RoleModule\Model\Role;
-use Doctrine\Common\Collections\ArrayCollection;
-use Doctrine\ORM\Mapping\Column;
-use Doctrine\ORM\Mapping\Entity;
-use Doctrine\ORM\Mapping\GeneratedValue;
-use Doctrine\ORM\Mapping\Id;
-use Doctrine\ORM\Mapping\JoinColumn;
-use Doctrine\ORM\Mapping\JoinTable;
-use Doctrine\ORM\Mapping\ManyToMany;
-use Doctrine\ORM\Mapping\Table;
 
 /**
  * @relation::with:App\CoreModule\RoleModule\Role::type:OneToMany
  * @relation::with:App\CoreModule\RoleModule\Role::type:OneToMany
+ * @Association(with=ClassName, type=AssociationType)
  * @description Represents base user in App
  */
 
 /**
- * @Entity
  * @Table(name="users")
  **/
-class User
+class User extends Model
 {
-    /**
-     * [private description]
-     * @var int $id
-     * @Id @Column(type="integer")
-     * @GeneratedValue
-     */
-    private $id;
 
     /** @Column(type="string") */
-    private $name = "";
+    private string $name = "";
 
-    /** @Column(type="string") */
-    private $email = "";
-    /** @Column(name="password",type="string") */
-    private $password = "";
+    /** @Column(type="email") */
+    private string $email = "";
+
+    /** @Column(type="password") */
+    private string $password = "";
+
 
     /**
-     * [private description]
-     * @var App\CoreModule\RoleModule\Model\Role $role
-     * @ManyToMany(targetEntity="App\CoreModule\RoleModule\Model\Role",fetch="EAGER")
-     * @JoinTable(name="users_roles",
-     *            joinColumns={@JoinColumn(name="users_id",referencedColumnName="id")},
-     *            inverseJoinColumns={@JoinColumn(name="roles_id",referencedColumnName="id")})
+     * @ManyToMany(targetEntity="App\CoreModule\RoleModule\Model\Role")
      */
-    private $role = null;
+    private array $roles = [];
 
-    public function __construct()
+    public function __construct(array $datas = [])
     {
-        $this->role = new ArrayCollection();
+        //parent::__construct($datas);
     }
 
-    public function setId($id)
-    {
-        if ($id != null) {
-            $this->id = $id;
-        }
-    }
-
-    public function getId()
-    {
-        return $this->id;
-    }
-
-    public function setName($name)
+    public function setName(string $name)
     {
         if ($name != null) {
             $this->name = $name;
@@ -81,7 +50,7 @@ class User
         return $this->name;
     }
 
-    public function setEmail($email)
+    public function setEmail(string $email)
     {
         if ($email != null) {
             $this->email = $email;
@@ -93,22 +62,19 @@ class User
         return $this->email;
     }
 
-    public function setPassword($pass)
+    public function setPassword(string $pass)
     {
-        if ($pass != null) {
-
-
-            $this->password = $pass;
-        }
+        $this->password = $pass;
     }
 
-    public function initPassword($pass)
+    public function initPassword(string $pass): bool
     {
-        if ($pass != null) {
-            $pass = password_hash($pass, PASSWORD_DEFAULT);
-
+        $pass = password_hash($pass, PASSWORD_DEFAULT);
+        if (is_string($pass)) {
             $this->password = $pass;
+            return true;
         }
+        return false;
     }
 
     public function getPassword()
@@ -116,24 +82,23 @@ class User
         return $this->password;
     }
 
-    public function verifyPassword($pass)
+    public function verifyPassword(string $pass)
     {
-        if (password_verify($pass, $this->password)) {
-            return true;
-        } else {
-            return false;
-        }
+        return password_verify($pass, $this->password) ?: false;
     }
 
-    public function setRole($role)
+    public function setRoles($roles)
     {
-        if ($role != null) {
-            $this->role = $role;
-        }
+        $this->roles = $roles;
     }
 
-    public function getRole()
+    public function getRoles()
     {
-        return $this->role;
+        return $this->roles;
+    }
+
+    public function getId(): int
+    {
+        return $this->id;
     }
 }

@@ -4,11 +4,11 @@ namespace App\CoreModule\UserModule\Views;
 
 use Ui\Views\ViewFieldsDefinition;
 
-class UserFormFieldDefinition extends ViewFieldsDefinition
+class UserFieldDefinition extends ViewFieldsDefinition
 {
   function __construct()
   {
-    $this->fieldsDefinition = ["name"=>"input","email"=>"email","password"=>"password","role"=>"select"];
+    $this->fieldsDefinition = ["name"=>"input","email"=>"email","password"=>"password","id"=>"input"];
     $this->dataForListInput = ["role"=>["admin","qis","cdem","soa","cvsp","none"]];
     $this->displays = [
                          "id"=>"Id Utilisateur",

@@ -1,30 +1,22 @@
 <?php
 namespace App\CoreModule\UserModule\Views;
 
-class UserAuthFormFilter
+use Ui\Views\ViewFilter;
+
+class UserAuthFormFilter extends ViewFilter
 {
-//Read right
-//    private $viewables = array("name","email");//,"password","role"
-    //Write right
-    private $writables = array("name","password");
-    private $confirmables = array("password");
-    private $searchables = array("name","email","role");
+    /**
+     * UserAuthFormFilter constructor.
+     */
+    public function __construct()
+    {
+        //Read right
+        $this->viewables = array("name","email");//,"password","role"
+        //Write right
+        $this->writables = array("name","password");
+        $this->confirmables = array("password");
+        $this->searchables = array("name","email","role");
 
-    public function getViewables()
-    {
-        return $this->viewables ;
-    }
-    public function getWritables()
-    {
-        return $this->writables ;
     }
 
-    public function getConfirmables()
-    {
-    }
-
-    public function getSearchables()
-    {
-        return $this->searchables ;
-    }
 }

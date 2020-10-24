@@ -1,183 +1,245 @@
 <?php
-namespace Brick\Users\Controller;
-use Brick\Controller\ModuleController;
-use Brick\Ui\Table\TableLegend;
 
-use Brick\Users\Model\{UserEntity,User};
-use Brick\Views\{
-	DataTableView,
-	FormFactory,
-	EntityViewFactory,
-	SearchViewFactory
-};
-use Brick\Ui\Buttons\{AddButton};
+namespace App\CoreModule\UserModule\Controller;
+
+use App\App;
+use App\Controller;
+use App\CoreModule\AuthorizationModule\Model\Autorization;
+use App\CoreModule\RoleModule\Model\Role;
+use App\CoreModule\UserModule\Model\User;
+use App\CoreModule\UserModule\Model\UsersManager;
+use App\CoreModule\UserModule\UserModule;
+use App\CoreModule\UserModule\Views\RoleEditionForm;
+use App\Session\Session;
+use Entity\SearchBinder;
+use ReflectionException;
+use Ui\Views\EntityView;
+use Ui\Widgets\Button\AddButton;
+use Ui\Widgets\Table\TableLegend;
+
+// to make facade for widgets constructors
 
 /**
  *
  */
-class UsersController implements ModuleController
+class UsersController extends Controller
 {
-  private $namespace="Brick\Users\Model\User";
-	private $container=null;
-  function __construct($container)
-  {
-		$this->container = $container;
-  }
 
-  /**
-	 * Return a form to get new user datas
-	 */
-	public function new(){
-		$ff = new FormFactory($this->namespace,"default","create","POST");
-		$ff->setFormTitle("Nouvel utilisateur");
-		return $ff->getForm();
+    private $moduleClass = UserModule::class;
 
-	}
-/**
- * @param array $params  : params to update a user
- */
-	public function edit($params){
-		$id = $params[0];
-		$entity = new UserEntity($this->container);
-		$user = $entity->findById($id);
-		if($user ==false){return $this->showError("entity not found");}
+    function __construct()
+    {
+        parent::__construct();
 
-		$ettf = new FormFactory($user,"default","update","POST");
-		$ettf->setFormTitle("Edition utilisateur");
-		$ef = $ettf->getForm();
+    }
 
-		return  $ef;
-	}
-/**
- * @param array $params  : params to show a user
- */
-	public function show($params){
-		$id = $params[0];
-		$entity = new UserEntity($this->container);
-		$user = $entity->findById($id);
-		if($user ==false){return $this->showError("entity not found");}
-		$this->entityViewGenerator = new EntityViewFactory($user,null);
-		$this->entityViewGenerator->setCurrentPath("/users/:id");
-	  $ev = $this->entityViewGenerator->getView();
+    /**
+     * Return a form to get new user datas
+     */
+    public function new()
+    {
+        try {
+            return ($this->formFactory(User::class))
+                ->withAction('/users/create')
+                ->setFormTitle("Nouvel utilisateur")
+                ->getForm($this->app);
+        } catch (ReflectionException $e) {
+            $this->app->internalError(
+                'Failed to display new User Form in : ' .
+                __CLASS__ .
+                ' ' .
+                __METHOD__
+            );
+        }
 
-	  return $ev;
+    }
 
-	}
-	/**
-	 * @param array $params  : params to show category with type
-	 */
-	public function category($params){
-		return "Get category $params[0] with type $params[1]";
-	}
-/**
- * Create a new user
- *only display the sentence  :
- *"creating user please wait"
- */
-	public function create(){
-		$user = new User();
-		$user->setName($_POST['user_name']);
-		\print_r("Password entered pass:".$_POST['user_password']." :".strlen($_POST['user_password']));
-		$user->initPassword($_POST['user_password']);
-		$user->setEmail($_POST['user_email']);
-		$user->setRole($_POST['user_role']);
-		$entity = new UserEntity($this->container);
-		$entity->create($user);
-	}
-/**
- * @param array $params  : params to delete a user
- */
-	public function delete($params)
-	{
-		$id = $params[0];
-		$entity = new UserEntity($this->container);
-		$entity->delete($id);
-		echo "You have deleted $this->namespace with id :$id";
-	}
-	/**
-	 * Update user with
-	 * @param array $params parametes to update user
-	 */
-	public function	update($params){
-		$id = $params[0];
+    /**
+     * @param array $params : params to update a user
+     * @return string|\Ui\HTML\Elements\Bases\Base
+     */
+    public function edit($params)
+    {
+        $id = $params[0];
+        $user = $this->modelManager(User::class)->findById($id);
+        if ($user == false) {
+            $this->app->showInfo('User not found');
+        }
+        try {
+            return $this->formFactory($user)
+                ->setFormTitle('Edition utilisateur')
+                ->withAction("users/$id/update")
+                ->getForm($this->app);
+        } catch (ReflectionException $e) {
+            $this->app->internalError(
+                'Error in : ' . __CLASS__ . ', ' . __METHOD__);
+        }
+    }
 
-		$entity = new UserEntity($this->container);
-		$user = $entity->findById($id);
-		if($user ==false){return $this->showError("entity not found");}
-		$text = "Are you sure to update this $this->namespace with id :$id";
-		$user->setName($_POST['user_name']);
-		//\print_r("Password entered pass:".$_POST['password']." :".strlen($_POST['password']));
-		$user->initPassword($_POST['user_password']);
-		$user->setEmail($_POST['user_email']);
-		$user->setRole($_POST['user_role']);
-		//var_dump($user);
-		//print_r("<br>");
-		$entity->update($user);
-		return $text;
-	}
+    public function editSelf()
+    {
+        if (Session::has('user')) {
+            return $this->render($this->formFactory(Session::get('user'))
+                ->setFormTitle('Mon compte')
+                ->getForm());
+        }
+    }
 
+    /**
+     * @param array $params : params to show a user
+     * @return string
+     */
+    public function show($id)
+    {
+        $this->viewFactory = $this->entityViewFactory(User::class, $id);
+        $this->viewFactory->setCurrentPath("/users/:id");
+        $actions = App::autorize($this->moduleClass, ['LIST', 'SEARCH', 'NEW', 'MODIFY']);
+        foreach ($actions as $action => $routeName) {
+            $url = $this->router->generateUrl($routeName, ['id' => $id]);
+            $this->viewFactory->useAction($action, $url);
 
-/**
- * Search UserModule
- */
-	public function searchform(){
+        }
 
+        //$this->viewFactory->setCollapsible();
+        return $this->render($this->viewFactory->getView());
+    }
 
-		 $etsf = new SearchViewFactory($this->namespace,null,"searchresult","POST");
-		 $etsf->setViewTitle("Search User");
-		 $sf = $etsf->getSearchView();
-		 return $sf;
-	}
+    /**
+     * Create a new user
+     */
+    public function create()
+    {
+        //Todo make RequestHandler able to process password fields
+        $user = new User();
+        $this->requestHandler->handle($user);
+        $role = new Role();
+        $this->requestHandler->handle($role, 'roles');
+        $user->setRoles([$role]);
+        $manager = $this->modelManager(User::class);
+        $id = ($manager->insert($user))->getId();
+        $this->app->redirectTo('/users/' . $id);
+    }
 
-	public function searchresult(){
-		$userEntity = new UserEntity($this->container);
-		$dtv = (new DataTableView($this->container,$this->namespace,null))->withClickableRows("/users");
-		if(isset($_POST["name"])&&$_POST["name"]!="")
-		{
-			$params["name"] = $_POST["user"];
-			$dtv->where($params);
-		}
+    /**
+     * @param array $params : params to delete a user
+     * @throws \Exception
+     */
+    public function delete(array $params)
+    {
+        $id = $params['id'];
+        $manager = $this->modelManager(User::class);
+        $manager->delete($id);
+        $this->app->showInfo("You have deleted user with id :$id");
+        $this->app->redirectTo('/users/');
+    }
 
-		if(isset($_POST["email"])&&$_POST["email"]!="")
-		{
-			$params["email"] = $_POST["user"];
-			$dtv->where($params);
+    /**
+     * Update user with
+     * @param array $params parametes to update user
+     */
+    public function update($params)
+    {
+        $id = $params;
 
-		}
-
-		if(isset($_POST["role"])&&$_POST["role"]!="")
-		{
-			$params["role"] = $_POST["role"];
-			$dtv->where($params);
-		}
-		$dtv->setTitle("<h2>Resultat de la recherche</h2>");
-		return $dtv->getView();
-	}
-/**
- * Return a view with the user list
- */
-	public function index(){
-
-		$dtv = (new DataTableView($this->container,$this->namespace,null))->withClickableRows("/users");
-
-		$legendTitle =new TableLegend("<h2>Liste des Utilisateurs</h2>",TableLegend::TOP_LEFT);
-		$addButton = new AddButton();
-		$addButton->setOnClick("location.href='/users/new'");
-		$legendButton = new TableLegend($addButton,TableLegend::TOP_RIGHT);
-		$dtv->addALegend($legendTitle);
-		$dtv->addALegend($legendButton);
-
-		return $dtv->getView();
-	}
+        $manager = $this->modelManager(User::class);
+        $user = $manager->findById($id);
+        if ($user == false) {
+            $this->app->showInfo("User not found");
+        }
+        $user->setName($_POST['user_name']);
+        $user->initPassword($_POST['user_password']);
+        $user->setEmail($_POST['user_email']);
+        //$user->setRole($_POST['user_role']);
+        $manager->update($user);
+        $this->app->redirectTo('/users/' . $id);
+    }
 
 
-/**
- * Return an Error message
- * @param string $message the error message to display
- */
-	public function showError($message){
-		return $message;
-	}
+    /**
+     * Search UserModule
+     */
+    public function search()
+    {
+        // Todo embed form and result table in the same factory
+        // Think to concept of type of search strict around
+        // then replace where = by WHERE LIKE
+        //Make possible to pass comma separated values in search
+        // and then make request WHERE IN
+        // Todo make possible to enable association fields in research
+        $view = new EntityView();
+        $searchFactory = $this->searchViewFactory(User::class);
+        $searchView = $searchFactory->withAction('/users/search')
+            ->setTitle("Search User")
+            ->getView($this->app);
+        try {
+            $searchBinder = new SearchBinder($this->request);
+            $params = $searchBinder->bind(User::class);
+            $resultsView = ($this->tableFactory(User::class))->withBaseUrl("/users");
+            $resultsView->where($params);
+            // Todo bind association fields
+            /*if (isset($_POST["role"]) && $_POST["role"] != "") {
+                $roleManager = $this->app->getModelManager(Role::class);
+                $param['name'] = $_POST["role"];
+                $role = $roleManager->findBy($param);
+                //var_dump($role[0]->getId());
+                //$view->where($params);
+            }*/
+            $resultsView->setTitle("<h2>Resultat de la recherche</h2>");
+            $resultsTable = $resultsView->getView($this->app);
+        } catch (ReflectionException $e) {
+            $this->app->internalError("Failed to search users");
+        } catch (\Exception $e) {
+            dump($e);
+        }
+        return $view->feed($searchView, $resultsTable);
+    }
+
+    public function editRoles($id)
+    {
+        return new RoleEditionForm(
+            $this->router,
+            $this->modelManager(User::class),
+            $id
+        );
+    }
+
+    public function addRole($id)
+    {
+        $role = new Role();
+        $this->requestHandler->handle($role,'roles');
+        $userManager = $this->modelManager(User::class, UsersManager::class);
+        $user = $userManager->findById($id);
+        $userManager->addRole($user, $role);
+        $this->routeTo('users_roles', ['id' => $id]);
+    }
+
+    public function deleteRole($userId, $roleId)
+    {
+        $userManager = $this->modelManager(User::class, UsersManager::class);
+        $userManager->deleteRole($userId, $roleId);
+        $this->routeTo('users_roles', ['id' => $userId]);
+    }
+
+    /**
+     * Return a view with the user list
+     */
+    public function index()
+    {
+        try {
+            $factory = ($this->tableFactory(User::class))->withBaseUrl('/users');
+            $legendTitle = new TableLegend(
+                "<h4>Liste des Utilisateurs</h4>",
+                TableLegend::TOP_LEFT
+            );
+            $addButton = new AddButton();
+            $addButton->size('xs')->setOnClick("location.href='/users/new'");
+            $legendButton = new TableLegend($addButton, TableLegend::TOP_RIGHT);
+            $factory->addALegend($legendTitle);
+            $factory->addALegend($legendButton);
+            $factory->setRouter($this->router);
+            return $this->render($factory->getView($this->app));
+        } catch (ReflectionException $e) {
+            $this->app->internalError("Failed to load users list");
+        }
+    }
 }
-
-?>
