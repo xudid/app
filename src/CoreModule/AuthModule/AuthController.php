@@ -2,115 +2,107 @@
 
 namespace App\CoreModule\AuthModule;
 
-
 use App\App;
+use App\Controller;
+use App\CoreModule\AuthModule\views\LoginForm;
+use App\CoreModule\AuthModule\views\NewPasswordForm;
+use App\CoreModule\AuthModule\views\ResetPasswordForm;
+use App\CoreModule\RoleModule\Model\Role;
 use App\CoreModule\UserModule\Model\User;
-use App\CoreModule\UserModule\Views\UserAuthFormFilter;
-use Ui\Views\FormFactory;
+use App\Security\TokenProvider;
+use App\Session\Session;
+use Core\Mail\Account;
+use Core\Mail\Mailer;
+use Core\Mail\Message;
+use Core\Mail\Recepient;
+use Exception;
+use GuzzleHttp\Psr7\ServerRequest;
+use Ui\Handler\RequestHandler;
 
-
-class AuthController
+/**
+ * Class AuthController
+ * @package App\CoreModule\AuthModule
+ */
+class AuthController extends Controller
 {
     /**
-     * @var $router
+     * @var mixed|string|null
      */
+    private TokenProvider $tokenProvider;
 
-    private $router;
-    /**
-     * @var $renderer
-     */
-    private $renderer;
-
-    private $container = null;
-
-    private $session_exists = false;
-
-    private function debugSession()
+    public function __construct()
     {
-        var_dump($this->session_exists);
-        var_dump(session_status());
-    }
-
-    private function activeSession()
-    {
-        session_start();
-        $this->session_exists = true;
-    }
-
-
-    /**
-     * AuthController constructor.
-     * @param App $app
-     */
-    function __construct(App $app)
-    {
-        $this->session_exists = (session_status() === PHP_SESSION_ACTIVE) ? true : false;
-        $this->app = $app;
+        parent::__construct();
+        $this->tokenProvider = App::get(TokenProvider::class);
     }
 
     /**
-     * [login description]
-     * @return string [description]
+     * @return mixed
+     * @throws Exception
      */
-    public function login(): string
+    public function login()
     {
-        $view = null;
-        $uaff = new UserAuthFormFilter();
         try {
-            $ff = new FormFactory(User::class, $uaff, null, 'auth', "POST");
-            $view = $ff->getForm();
 
-        } catch (\ReflectionException $e) {
-            var_dump($e->getMessage());
+            return $this->render(new LoginForm($this));
+
+        }catch (Exception $e) {
+            $this->app->internalError($e->getMessage());
         }
-
-
-        return $view;
     }
 
     /**
-     * [logout description]
-     * @return string [description]
+     * @return bool
      */
-    public function logout(): string
+    public function logout(): bool
     {
-        if (!$this->session_exists) {
-            $this->activeSession();
+        if (Session::exists()) {
+            Session::start();
         }
-        \session_destroy();
-        unset($_SESSION);
-        return "logged out";
+        Session::destroy();
+        $this->app->redirectTo('/login');
     }
 
     /**
      * @param App $app
      */
-    public function auth(App $app)
+    public function auth()
     {
-        $name = $_POST['name'];
-        $password = $_POST['password'];
-        $entity = $this->app->getEntity(User::class);
-        $result = $entity->FindBy(["name" => $name]);
-        $user = $result[0];
+        $manager = $this->app->getModelManager(User::class);
 
-        $trusted = false;
-        if ($user) {
-            $trusted = $user->verifyPassword($password);
-        }
-        if ($trusted) {
-            if (!$this->session_exists) {
-                $this->activeSession();
+        $name = $_POST['user_name'];
+        $password = $_POST['user_password'];
+
+        $result = $manager->findBy(['name' => $name]);
+        $user = $result[0];
+        if ($user && $user->verifyPassword($password)) {
+            $builder = $manager->builder();
+            $request = $builder->select('roles.*')
+                ->from('roles')
+                ->join('users_roles', 'id', 'roles_id')
+                ->where('users_id', '=', $user->getId());
+            $results = $builder->execute($request);
+            $roles = [];
+            foreach ($results as $role) {
+                $roles[] = Role::hydrate($role);
+            }
+            $user->setRoles($roles);
+            if (!Session::exists()) {
+                Session::start();
                 \session_regenerate_id();
             }
-            $_SESSION['user'] = $user;
+            Session::set('user', $user);
+
             $url = $this->restoreAskedUrl();
             if ($url) {
                 $this->resetAskedUrl();
-                $app->redirectTo($url);
-                $app->redirectTo('/test');
+                $this->app->redirectTo($url);
+
+            } else {
+                $this->app->redirectTo('/');
             }
         } else {
-            $app->redirectTo('/login');
+            $this->app->redirectTo('/login');
         }
     }
 
@@ -120,38 +112,31 @@ class AuthController
      */
     public function isloggedin()
     {
-        if (!$this->session_exists) {
-            $this->activeSession();
+        if (!Session::exists()) {
+            Session::start();
         }
-        //session_start();
-        if (\array_key_exists("user", $_SESSION)) {
-
-            $user = $_SESSION['user'];
-            return $user;
+        if (Session::exists() && Session::has('user')) {
+            return Session::get('user');
         } else {
             return false;
         }
     }
 
-    public function userHasRole($roles): bool
+    public function userHasRole(Role $role): bool
     {
-        if (!$this->session_exists) {
-            $this->activeSession();
+        if (!Session::exists()) {
+            Session::start();
         }
-        if (\array_key_exists("user", $_SESSION)) {
-            $user = $_SESSION['user'];
-
-            foreach ($roles as $key => $value) {
-                $role = $value;
-                $usersroles = $user->getRole();
-                foreach ($usersroles as $key => $userrole) {
-                    if ($role == $userrole) {
-                        return true;
-                    }
-                }
+        if (Session::has('user')) {
+            $user = Session::get('user');
+            $modelManager = $this->app->getModelManager(User::class);
+            $roles = $modelManager->findAssociationValuesBy(Role::class, $user);
+            if ($roles) {
+                $roles = array_column($roles, 'name');
+                return in_array($role->getName(), $roles);
             }
-            return false;
         }
+        return false;
     }
 
     /**
@@ -160,10 +145,13 @@ class AuthController
      */
     public function saveAskedUrl(string $url)
     {
-        if ($this->session_exists) {
-            $this->activeSession();
+        if (!Session::exists()) {
+            Session::start();
         }
-        $_SESSION['STORED_URL'] = $url;
+        try {
+            Session::set('STORED_URL', $url);
+        } catch (Exception $e) {
+        }
     }
 
     /**
@@ -172,22 +160,127 @@ class AuthController
      */
     public function restoreAskedUrl(): string
     {
-        if (!$this->session_exists) {
-            $this->activeSession();
+        if (!Session::exists()) {
+            Session::start();
         }
-        if (\array_key_exists("STORED_URL", $_SESSION)) {
-            return $_SESSION['STORED_URL'];
+        if (Session::has('STORED_URL')) {
+            return Session::get('STORED_URL');
         }
         return false;
     }
 
     public function resetAskedUrl()
     {
-        if (!$this->session_exists) {
-            $this->activeSession();
+        if (!Session::exists()) {
+            Session::start();
         }
-        $_SESSION['STORED_URL'] = "";
+        Session::delete('STORED_URL');
+    }
+
+    public function getResetToken()
+    {
+        $form = new ResetPasswordForm($this->formFactory(User::class));
+        return $this->render($form);
+
+    }
+
+    public function sendResetMail()
+    {
+        $user = new User();
+        $handler = new RequestHandler(ServerRequest::fromGlobals());
+        $handler->handle($user);
+        $queryBuilder = $this->modelManager(User::class)->builder();
+        $request = $queryBuilder->select()->from('users')->where('email', '=', $user->getEmail());
+        $result = $queryBuilder->execute($request);
+        if ($result) {
+            $user = User::hydrate($result[0]);
+            //$mailAccount =  App->get('MailAccount'); ....
+            //mailSender = App->get('MailSender')
+            $account = new Account('192.168.226.56', null, null);
+            $account->setPort('1025');
+            $mailer = new Mailer($account);
+            // use with dev with maildev
+            $mailer->smtpSecure()->smtpAutoTLS();
+            $token = $this->tokenProvider->getUserToken($user);
+            $href =  'http://192.168.226.56/password/recovery/' . $token;
+            $message = new Message(
+                new Recepient('no-reply', 'no-reply@mowjo.fr'),
+                new Recepient('clt1', 'clt1@mowjo.fr'),
+                'recuperation mot de passe',
+                "<h1>Recuperation de mot de passe</h1>
+    <a href=$href>Veuillez cliquer içi pour réinitialiser votre mot de passe</a>"
+            );
+            $mailer->send($message);
+            return $this->render("Un mail de réinitialisation a été envoyé à : " . $user->getEmail());
+
+        } else {
+            $this->redirect('/');
+        }
+    }
+
+    public function resetPassword(string $token)
+    {
+        // Todo escape token (avoid sql injection)
+        if (!$this->tokenProvider->isValid($token)) {
+            return $this->render("Le lien que vous utilisez n'est pas valide");
+        }
+        return $this->render(new NewPasswordForm($token));
+    }
+
+    public function registerPassword()
+    {
+        $httpRequest = ServerRequest::fromGlobals();
+        $datas = $httpRequest->getParsedBody();
+
+        if (!array_key_exists('user_email', $datas)) {
+            $this->redirect('/');
+        }
+
+        // get user by mail
+        $user = $this->getUserWithHttpRequest();
+        if (!$user) {
+            $this->redirect('/');
+        }
+        if (!array_key_exists('token', $datas)) {
+            $this->redirect('/');
+        }
+        $token = $datas['token'];
+        if (!$this->tokenProvider->isValid($token)) {
+            $this->redirect('/');
+        }
+        // verify that user owns token and is not used and not
+        //expirated
+        if (!array_key_exists('user_password', $datas)) {
+            $this->redirect('/');
+        }
+        $password = $datas['user_password'];
+
+        if (!array_key_exists('user_password_confirmation', $datas)) {
+            $this->redirect('/');
+        }
+        $passwordConfirmation = $datas['user_password_confirmation'];
+
+        if ($password !== $passwordConfirmation) {
+            $this->redirect('/');
+        }
+
+
+    }
+    private function getUserWithHttpRequest()
+    {
+        $user = new User();
+        $handler = new RequestHandler(ServerRequest::fromGlobals());
+        $handler->handle($user);
+
+        if (!filter_var($user->getEmail(), FILTER_VALIDATE_EMAIL)) {
+            $this->redirect('/');
+        }
+        $queryBuilder = $this->modelManager(User::class)->builder();
+        $request = $queryBuilder->select()->from('users')->where('email', '=', $user->getEmail());
+        $result = $queryBuilder->execute($request);
+        if ($result) {
+            return User::hydrate($result[0]);
+        }
+        return false;
     }
 }
-
-?>
