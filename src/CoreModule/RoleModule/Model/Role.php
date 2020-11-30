@@ -15,19 +15,19 @@ class Role extends Model
      * @var string $name
      * @Column(type="string")
      */
-    private string $name = '';
+    protected string $name = '';
 
     /**
      * Role description
      * @var string $description
      * @Column(type="string")
      */
-    private string $description = '';
+    protected string $description = '';
 
     /**
      * @ManyToMany(targetEntity="App\CoreModule\ManagerModule\Model\Module")
      */
-    private array $modules = [];
+    protected array $modules = [];
 
     public function __construct(array $datas = [])
     {
@@ -63,6 +63,26 @@ class Role extends Model
     {
         return $this->id;
     }
+
+    /**
+     * @return array
+     */
+    public function getModules(): array
+    {
+        return $this->modules;
+    }
+
+    /**
+     * @param array $modules
+     * @return Role
+     */
+    public function setModules( $modules): Role
+    {
+        $this->modules = $modules;
+        return $this;
+    }
+
+
 
 
 }
