@@ -3,10 +3,6 @@
 namespace App;
 
 use App\CoreModule\AuthorizationModule\Controller\AuthorizationController;
-use App\CoreModule\AuthorizationModule\Model\Autorization;
-use App\CoreModule\RoleModule\Model\Role;
-use App\CoreModule\UserModule\Model\User;
-use App\CoreModule\UserModule\Views\UserAuthFormFilter;
 use App\Module\Module;
 use App\Pipeline\Pipeline;
 use App\Session\Session;
@@ -16,7 +12,6 @@ use DI\NotFoundException;
 use Entity\Database\Dao;
 use Entity\Database\Mysql\MysqlDataSource;
 use Entity\Model\ManagerInterface;
-use Entity\Model\ModelManager;
 use Exception;
 use GuzzleHttp\Psr7\Response;
 use GuzzleHttp\Psr7\ServerRequest;
@@ -83,6 +78,13 @@ class App
             self::$config['core_modules'] ?? [],
             self::$config['app_modules'] ?? []
         );
+        spl_autoload_register(function($class){
+            $fileClassName = str_replace('\\', DIRECTORY_SEPARATOR, $class);
+            $fileName = dirname($_SERVER['DOCUMENT_ROOT']) . DIRECTORY_SEPARATOR .  'classes' . DIRECTORY_SEPARATOR . $fileClassName . '.php';
+            if (file_exists($fileName)) {
+                require_once $fileName;
+            }
+        });
         $this->containerBuilder->addDefinitions(require self::$config['config_dir'] . DIRECTORY_SEPARATOR . 'di.php');
         foreach ($this->moduleClassNames as $moduleClassName) {
             if (is_string($moduleClassName)) {
@@ -497,4 +499,3 @@ class App
         }
     }
 }
-
