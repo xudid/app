@@ -1,8 +1,6 @@
 <?php
 
-
 namespace App\CoreModule\ManagerModule\Model;
-
 
 use Entity\Model\Model;
 
@@ -12,13 +10,13 @@ use Entity\Model\Model;
 class Module extends Model
 {
     /** @Column(type="string") */
-    private string $moduleClass = '';
+    protected string $moduleClass = '';
 
     /** @Column(type="string") */
-    private string $name = '';
+    protected string $name = '';
 
     /** @Column(type="string") */
-    private string $description = '';
+    protected string $description = '';
 
     /**
      * Module constructor.
