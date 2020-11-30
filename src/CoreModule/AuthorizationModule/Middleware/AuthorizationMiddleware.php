@@ -73,8 +73,6 @@ class AuthorizationMiddleware implements MiddlewareInterface
                 return $response;
             }
         }
-
-
     }
 
     /*
@@ -89,4 +87,3 @@ class AuthorizationMiddleware implements MiddlewareInterface
 
     }
 }
-
