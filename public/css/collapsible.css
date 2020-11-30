@@ -1,0 +1,30 @@
+.collapsible{
+    list-style-type: none;
+    border: 2px solid #007bff;;
+    border-radius: 5px;
+    padding: 1rem;
+    margin: 0.5rem 0 1rem 0;
+}
+
+
+.collapsible-header{
+    cursor: pointer;
+    background-color: #007bff;
+    border-radius: 5px;
+    padding: 1em;
+    border-bottom: 1px solid white;
+    margin-bottom: 3px;
+}
+
+.collapsible-body{
+    max-height: 0;
+    overflow: hidden;
+    background: white ;
+    color: black;
+    cursor: pointer;
+
+    /* border-bottom: 1px solid #aaa; */
+    /* margin-bottom: 5px; */
+    transition: max-height 0.3s ease-out;
+
+}
