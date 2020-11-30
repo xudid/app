@@ -14,6 +14,7 @@ use App\CoreModule\UserModule\Model\User;
 use App\Session\Session;
 use Doctrine\Common\Inflector\Inflector;
 use Entity\Database\QueryBuilder\QueryBuilder;
+use Exception;
 use Ui\Views\EntityView;
 
 /**
@@ -22,10 +23,8 @@ use Ui\Views\EntityView;
  */
 class AuthorizationController extends Controller
 {
-
     public function __construct()
 	{
-
 	     parent::__construct();
 	}
 
@@ -59,8 +58,7 @@ class AuthorizationController extends Controller
 	    $modules = [];
 	    if (Session::has('user')) {
             $user = Session::get('user');
-            $userManager = $this->modelManager(User::class);
-            $roles = $userManager->findAssociationValuesBy(Role::class, $user);
+            $roles = $user->getRoles();
             $rolesManager = $this->modelManager(Role::class);
             foreach ($roles as $role) {
                 $result = $rolesManager->findAssociationValuesBy(Module::class, $role);
