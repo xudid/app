@@ -2,7 +2,7 @@
 
 namespace Middleware;
 
-use GuzzleHttp\Psr7\Stream;
+use GuzzleHttp\Psr7\ServerRequest;
 use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
 use Psr\Http\Server\MiddlewareInterface;
@@ -20,7 +20,7 @@ class ControllerDispatcher implements MiddlewareInterface
      */
     private ResponseInterface $response;
 
-    function __construct($app)
+    function __construct()
     {
 
     }
@@ -34,7 +34,6 @@ class ControllerDispatcher implements MiddlewareInterface
     function process(ServerRequestInterface $request, RequestHandlerInterface $handler): ResponseInterface
     {
         $this->response = $handler->handle($request);
-
         $route = $request->getAttribute("route");
         $success = $request->getAttribute("success");
         if (is_null($route)) {
@@ -50,10 +49,9 @@ class ControllerDispatcher implements MiddlewareInterface
         $args = $route->getValues();
         $view = null;
         if (sizeof($args) > 0) {
-            $view = call_user_func_array($callback, array($this->response, $args));
+            $view = call_user_func_array($callback, array($args));
         } else {
-            $view = call_user_func_array($callback, array($this->response));
-
+            $view = call_user_func_array($callback, array());
         }
         $this->response->getBody()->write($view);
         return $this->response;
