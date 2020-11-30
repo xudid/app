@@ -76,17 +76,6 @@ class AuthController extends Controller
         $result = $manager->findBy(['name' => $name]);
         $user = $result[0];
         if ($user && $user->verifyPassword($password)) {
-            $builder = $manager->builder();
-            $request = $builder->select('roles.*')
-                ->from('roles')
-                ->join('users_roles', 'id', 'roles_id')
-                ->where('users_id', '=', $user->getId());
-            $results = $builder->execute($request);
-            $roles = [];
-            foreach ($results as $role) {
-                $roles[] = Role::hydrate($role);
-            }
-            $user->setRoles($roles);
             if (!Session::exists()) {
                 Session::start();
                 \session_regenerate_id();
