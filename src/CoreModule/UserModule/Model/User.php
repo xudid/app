@@ -19,19 +19,19 @@ class User extends Model
 {
 
     /** @Column(type="string") */
-    private string $name = "";
+    protected string $name = "";
 
     /** @Column(type="email") */
-    private string $email = "";
+    protected string $email = "";
 
     /** @Column(type="password") */
-    private string $password = "";
+    protected string $password = "";
 
 
     /**
      * @ManyToMany(targetEntity="App\CoreModule\RoleModule\Model\Role")
      */
-    private array $roles = [];
+    protected array $roles = [];
 
     public function __construct(array $datas = [])
     {
