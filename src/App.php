@@ -34,7 +34,6 @@ class App
     public static $configDirectory;
     private array $moduleClassNames = [];
     private array $modulesInstances = [];
-    private array $modulesInfos = [];
     private array $errors = [];
     private static ContainerInterface $container;
     private string $appName;
@@ -104,8 +103,6 @@ class App
                     $this->installModule($moduleClassName);
                 }
             }
-            $authorizationcontroller = self::$container->get(AuthorizationController::class);
-            $modules =$authorizationcontroller->getAuthorizedModules();
 
             // create middleware pipeline
             $this->pipeline = self::$container->get(Pipeline::class);
@@ -189,79 +186,9 @@ class App
         return file_exists($configFileName) ? require_once $configFileName : [];
     }
 
-    /*private function loadModule($moduleClassName)
-    {
-
-        try {
-            $moduleReflectionClass = null;
-            try {
-                    if (class_exists($moduleClassName) && is_subclass_of($moduleClassName, Module::class)) {
-                        $this->containerBuilder->addDefinitions($moduleClassName::getDefinitions());
-                        foreach ($moduleClassName::getRoutes() as $route) {
-                            dump($route);
-                        }
-                    }
-                $moduleReflectionClass = new ReflectionClass($moduleClassName);
-                $module = $moduleReflectionClass->newInstance($this);
-                //Loading module info
-                if (($module != null) && ($module instanceof ModuleInterface)) {
-
-                    $this->loadModuleInfo($module);
-                    //Loading module dependencies
-
-                    if ($module->hasDependencies() && !($missingDependencies = $module->checkDependencies($this->modulesInstances))) {
-                        foreach ($missingDependencies as $missingDependency) {
-                            $this->loadModule($missingDependency);
-                        }
-                    }
-                    //Loading submodules for MetaModules
-                    if ($module->isMetaModule()) {
-                        $subModuleClassNames = $module->getSubModuleClassNames();
-
-                        foreach ($subModuleClassNames as $subModuleClassName) {
-
-                            if ($moduleClassName != $subModuleClassName) {
-                                $subModule = $this->loadModule($subModuleClassName);
-                                if ($subModule && $subModule instanceof Module) {
-                                    $this->loadModuleInfo($subModule);
-                                    $this->modulesInstances[$subModuleClassName] = $subModule;
-                                }
-
-                            } else {
-                                throw new Exception("Circular reference was detected in submodule referencies");
-                            }
-                        }
-                    }
-                    $this->modulesInstances[$moduleClassName] = $module;
-                    return $module;
-                }
-            } catch (Exception $e) {
-                var_dump($e->getMessage());
-            }
-
-        } catch (ReflectionException $e) {
-            $this->errors[] = "Module $moduleClassName not Found";
-        }
-    }*/
     private function initModule($className)
     {
 
-    }
-
-    //todo populate the navbar in AppPage
-
-    private function loadModuleInfo($module)
-    {
-        $infos = $module->getModuleInfo();
-        if (!is_null($infos)) {
-            $this->modulesInfos[$module->getScope()] = $infos;
-            /*$this->renderer->addNavBarItem($infos->getNavBarDisplayType(),
-                $infos->getPath(),
-                $infos->getNavBarDisplay(),
-                $infos->getAlternateDisplay(),
-                $infos->getDisplaySide()
-            );*/
-        }
     }
 
     /**
@@ -280,13 +207,7 @@ class App
         return $this->modulesInstances;
     }
 
-    /**
-     * @return array
-     */
-    public function getModulesInfos(): array
-    {
-        return $this->modulesInfos;
-    }
+
 
     /**
      * @return mixed|string|app_name
