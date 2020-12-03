@@ -9,13 +9,9 @@
       "email": "dmoindreau@gmail.com"
     }
   ],
-  "autoload":{
+  "autoload": {
     "psr-4": {
-        "App\\": "src/",
-      "Usage\\": "usage/",
-      "Modules\\": "modules/",
-      "Controller\\": "controller/Controller/",
-      "Middleware\\": "middlewares/Middleware/"
+      "App\\": "src/"
     }
   },
   "require": {
@@ -25,17 +21,18 @@
     "robmorgan/phinx": "^0.12.1",
     "guzzlehttp/psr7": "^1.6",
     "http-interop/response-sender": "^1.0",
-    "xudid/entity": "dev-master",
+    "psr/http-server-middleware": "^1.0",
     "mongodb/mongodb": "^1.6",
     "xudid/renderer": "dev-master",
     "twbs/bootstrap": "4.5.0",
-    "xudid/core": ">=0.0.17"
+    "xudid/core": ">=0.0.17",
+    "xudid/router": "^0.05.0",
+    "xudid/entity": "dev-master",
+    "xudid/ui": "dev-master"
   },
   "require-dev": {
-    "xudid/ui": "dev-master",
-    "xudid/router": "^0.03.0",
     "doctrine/orm": "^2.7",
-    "psr/http-server-middleware": "^1.0",
+
     "symfony/var-dumper": "^5.0"
   }
 }

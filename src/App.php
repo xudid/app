@@ -92,16 +92,12 @@ class App
             }
         }
 
-
-
         try {
                 self::$container = $this->containerBuilder->build();
             foreach ($this->moduleClassNames as $moduleClassName) {
                 if (is_string($moduleClassName)) {
                     $this->loadRoutes($moduleClassName);
                 }
-
-
             }
             foreach ($this->moduleClassNames as $moduleClassName) {
                 if (is_string($moduleClassName)) {
