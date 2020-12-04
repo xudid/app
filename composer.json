@@ -23,7 +23,6 @@
     "http-interop/response-sender": "^1.0",
     "psr/http-server-middleware": "^1.0",
     "mongodb/mongodb": "^1.6",
-    "xudid/renderer": "0.01.2",
     "twbs/bootstrap": "4.5.0",
     "xudid/core": ">=0.0.17",
     "xudid/router": "^0.05.0",
