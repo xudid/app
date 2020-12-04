@@ -6,6 +6,7 @@ use App\CoreModule\ControllerDispatcher\Middleware\ControllerDispatcher;
 $rootDir = dirname($_SERVER['DOCUMENT_ROOT']);
 return [
     'app_name' => 'backoffice',
+	'environment' => 'development',
     'root_dir' => $rootDir,
     'config_dir' => $rootDir .DIRECTORY_SEPARATOR . 'config',
     'temp_dir' => $rootDir . DIRECTORY_SEPARATOR . 'tmp',
