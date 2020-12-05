@@ -5,7 +5,6 @@ namespace App;
 use App\CoreModule\AuthorizationModule\Controller\AuthorizationController;
 use App\Module\Module;
 use App\Pipeline\Pipeline;
-use App\Session\Session;
 use DI\ContainerBuilder;
 use DI\DependencyException;
 use DI\NotFoundException;
@@ -34,22 +33,20 @@ class App
 {
 	public static $configDirectory;
 	private array $moduleClassNames = [];
-	private array $modulesInstances = [];
 	private array $errors = [];
 	private static ContainerInterface $container;
 	private string $appName;
-	private static string $name;
 	private Pipeline $pipeline;
 	private static string $root;
 	private static string $temp;
 	public static string $modules;
-	private static  $config;
+	private static $config;
+	private static $routes = [];
 	private static $instance;
 	/**
 	 * @var ContainerBuilder
 	 */
 	private ContainerBuilder $containerBuilder;
-	private string $rootDir;
 
 	/**
 	 * App constructor.
@@ -61,12 +58,18 @@ class App
 
 	private function __construct()
 	{
+		self::$instance = $this;
+
 		// make convention on definitions path
 		if (!file_exists('../config/config.php')) {
 			throw new Exception('No config file');
 		}
-		self::$instance = $this;
 		self::$config = require_once('../config/config.php');
+
+		if (file_exists('../config/routes.php')) {
+			self::$routes = require_once('../config/routes.php');
+		}
+
 		self::$root = self::$config['root_dir'];
 		self::$temp = self::$config['temp_dir'];
 		self::$modules = self::$config['site_modules'];
@@ -78,9 +81,9 @@ class App
 			self::$config['core_modules'] ?? [],
 			self::$config['app_modules'] ?? []
 		);
-		spl_autoload_register(function($class){
+		spl_autoload_register(function ($class) {
 			$fileClassName = str_replace('\\', DIRECTORY_SEPARATOR, $class);
-			$fileName = dirname($_SERVER['DOCUMENT_ROOT']) . DIRECTORY_SEPARATOR .  'cache/classes' . DIRECTORY_SEPARATOR . $fileClassName . '.php';
+			$fileName = dirname($_SERVER['DOCUMENT_ROOT']) . DIRECTORY_SEPARATOR . 'cache/classes' . DIRECTORY_SEPARATOR . $fileClassName . '.php';
 			if (file_exists($fileName)) {
 				require_once $fileName;
 			}
@@ -94,16 +97,19 @@ class App
 
 		try {
 			self::$container = $this->containerBuilder->build();
+
+			$this->loadRoutes(self::getApplicationRoutes());
 			foreach ($this->moduleClassNames as $moduleClassName) {
 				if (is_string($moduleClassName)) {
-					$this->loadRoutes($moduleClassName);
+					$routes = $this->getModuleRoutes($moduleClassName);
+					$this->loadRoutes($routes);
 				}
 			}
-			foreach ($this->moduleClassNames as $moduleClassName) {
+			/*foreach ($this->moduleClassNames as $moduleClassName) {
 				if (is_string($moduleClassName)) {
 					$this->installModule($moduleClassName);
 				}
-			}
+			}*/
 
 			// create middleware pipeline
 			$this->pipeline = self::$container->get(Pipeline::class);
@@ -122,7 +128,7 @@ class App
 
 	public static function getInstance()
 	{
-		if(is_null(self::$instance)) {
+		if (is_null(self::$instance)) {
 			self::$instance = new App();
 		}
 		return self::$instance;
@@ -146,7 +152,7 @@ class App
 
 	}
 
-	public static function autorize(string $moduleClass, array $types =[])
+	public static function autorize(string $moduleClass, array $types = [])
 	{
 		// un utilisateur est autorisé a faire 0a n action appartenant a un module
 		// Table User Table des modules Tables actions Table des actions
@@ -157,25 +163,15 @@ class App
 		$actions = AuthorizationController::authorizedAction($moduleClass);
 		$autorizations = [];
 		foreach ($actions as $action) {
-			if((count($types) == 0)) {
+			if ((count($types) == 0)) {
 				$autorizations[$action['type']] = $action['route_name'];
-			} elseif(in_array($action['type'], $types)) {
+			} elseif (in_array($action['type'], $types)) {
 				$autorizations[$action['type']] = $action['route_name'];
 			}
 
 		}
-		return$autorizations;
+		return $autorizations;
 
-	}
-
-	public function accessModules()
-	{
-		$user = Session::get('user');
-		$controller = App::get(AuthorizationController::class);
-		if ($user) {
-			return[Stock\StockModule::class];
-		}
-		return [CoreModule\AuthModule\AuthModule::class];
 	}
 
 	/**
@@ -187,40 +183,14 @@ class App
 		return file_exists($configFileName) ? require_once $configFileName : [];
 	}
 
-	private function initModule($className)
-	{
-
-	}
-
-	/**
-	 * @return array|mixed
-	 */
-	public function getModuleClassNames()
-	{
-		return $this->moduleClassNames;
-	}
-
-	/**
-	 * @return array
-	 */
-	public function getModulesInstances(): array
-	{
-		return $this->modulesInstances;
-	}
-
-
-
-	/**
-	 * @return mixed|string|app_name
-	 */
-	public function getAppName()
-	{
-		return $this->appName;
-	}
-
 	public static function getEnvironment()
 	{
 		return self::$config['environment'];
+	}
+
+	public static function getApplicationRoutes() :array
+	{
+		return self::$routes;
 	}
 
 	/**
@@ -290,7 +260,7 @@ class App
 	 */
 	public static function getConfigDir()
 	{
-		return self::$config['config_dir'] ;
+		return self::$config['config_dir'];
 	}
 
 	public static function setCongigDir(string $dir)
@@ -330,16 +300,16 @@ class App
 		exit();
 	}
 
-	public function getModelManager(string $classNamespace, string $managerInterfaceName = '') : ?ManagerInterface
+	public function getModelManager(string $classNamespace, string $managerInterfaceName = ''): ?ManagerInterface
 	{
 		try {
 			$factory = self::get(ManagerFactory::class);
 
-			if(class_exists($managerInterfaceName)) {
+			if (class_exists($managerInterfaceName)) {
 				$factory->setManagerInterface($managerInterfaceName);
 
 				return $factory->getManager($classNamespace);
-			} elseif(class_exists($classNamespace)) {
+			} elseif (class_exists($classNamespace)) {
 				return $factory->getManager($classNamespace);
 			} else {
 				return null;
@@ -369,7 +339,7 @@ class App
 	private function loadContainerDefinitions($className)
 	{
 		if (class_exists($className) && is_subclass_of($className, Module::class)) {
-			$dir =$className::getDir();
+			$dir = $className::getDir();
 			if (file_exists($dir)) {
 				$diFileName = $dir . DIRECTORY_SEPARATOR . 'di.php';
 				if (file_exists($diFileName)) {
@@ -380,33 +350,41 @@ class App
 		}
 	}
 
-	private function loadRoutes(string $moduleClassName)
+	private function loadRoute(array $route)
 	{
-		$router = self::$container->get('router');
-		$router->get('/','default', function(){
-			return self::render('Root page');
-		});
-		$router->get('/home','home', function(){
-			return self::render('Home sweet home');
-		});
+		$router = self::get('router');
+		$method = $route['method'] ?: '';
+		if ($router->authorize($method)) {
+			return Route::hydrate($route);
+		}
+	}
+
+	private function getModuleRoutes(string $moduleClassName)
+	{
+		$routes = [];
 		if (class_exists($moduleClassName) && is_subclass_of($moduleClassName, Module::class)) {
-			$dir =$moduleClassName::getDir();
+			$dir = $moduleClassName::getDir();
 			if (file_exists($dir)) {
 				$routesFileName = $dir . DIRECTORY_SEPARATOR . 'routes.php';
 				if (file_exists($routesFileName)) {
-					$routes = require $routesFileName;
-					$routes = is_array($routes) ? $routes : [];
-					foreach ($routes as $route) {
-						$method = $route['method'] ?: '';
-						if ($router->authorize($method)) {
-							$routes[$method][$route['name']] = Route::hydrate($route);
-						}
-					};
-					$router->setRoutes($routes);
+					$moduleRoutes = require $routesFileName;
+					if (is_array($moduleRoutes)) {
+						$routes = array_merge($routes, $moduleRoutes);
+					}
 				}
 			}
-
 		}
+		return $routes;
+	}
+
+	private function loadRoutes(array $routes)
+	{
+		$hydratedRoutes = [];
+		$router = self::get('router');
+		foreach ($routes as $route) {
+			$hydratedRoutes[$route['method']][$route['name']] = $this->loadRoute($route);
+		}
+		$router->setRoutes($hydratedRoutes);
 	}
 
 	private function installModule(string $moduleClassName)
@@ -417,7 +395,7 @@ class App
 				$migrationsDir = $dir . DIRECTORY_SEPARATOR . 'migrations';
 				if (file_exists($migrationsDir)) {
 					try {
-						$moduleClassName::install((new Dao($this->get(MysqlDataSource::class),'')), 'development');
+						$moduleClassName::install((new Dao($this->get(MysqlDataSource::class), '')), 'development');
 					} catch (Exception $e) {
 					}
 				}
