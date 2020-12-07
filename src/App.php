@@ -251,8 +251,8 @@ class App
 	public static function render($view)
 	{
 		$renderer = self::get(Renderer::class);
-		return $renderer->setAppPage(new Page())
-			->renderAppPage($view);
+		$renderer->setAppPage(new Page());
+		return $renderer->renderAppPage($view);
 	}
 
 	/**
