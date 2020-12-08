@@ -150,9 +150,14 @@ class Module implements ModuleInterface
         // TODO: Implement getSubModuleClassNames() method.
     }
 
-    public function getMigrationsPath()
+	public static function exists(string $className)
+	{
+		class_exists($className) && is_subclass_of($className, Module::class);
+    }
+
+    public static function getMigrationsDir(string $className)
     {
-        // here or in DI definition above
+        return static::getDir($className) . DIRECTORY_SEPARATOR . 'migrations';
     }
 
     public static function  install(DaoInterface $dao, string $environment)

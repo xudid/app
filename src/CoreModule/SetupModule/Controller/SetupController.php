@@ -7,6 +7,8 @@ use App\App;
 use App\CoreModule\ManagerModule\Model\Action;
 use App\CoreModule\ManagerModule\Model\Module;
 use App\Module\Module as ApplicationModule;
+use Entity\Database\Dao;
+use Entity\Database\Mysql\MysqlDataSource;
 
 class SetupController
 {
@@ -14,6 +16,28 @@ class SetupController
     {
         $this->app = App::getInstance();
     }
+
+    private function installDB()
+	{
+		$modulesClassName = $this->app->getModulesClassName();
+		foreach ($modulesClassName as $moduleClassName) {
+			$this->installModule($moduleClassName);
+		}
+	}
+
+	private function installModule(string $moduleClassName)
+	{
+		if (Module::exists($moduleClassName)) {
+			$migrationsDir = $moduleClassName::getMigrationsDir($moduleClassName);
+			if (file_exists($migrationsDir)) {
+				try {
+					$moduleClassName::install((new Dao($this->get(MysqlDataSource::class), '')), 'development');
+				} catch (Exception $e) {
+				}
+
+			}
+		}
+	}
 
     public function setup()
     {

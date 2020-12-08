@@ -387,19 +387,9 @@ class App
 		$router->setRoutes($hydratedRoutes);
 	}
 
-	private function installModule(string $moduleClassName)
+	public function getModulesClassName()
 	{
-		if (class_exists($moduleClassName) && is_subclass_of($moduleClassName, Module::class)) {
-			$dir = $moduleClassName::getDir();
-			if (file_exists($dir)) {
-				$migrationsDir = $dir . DIRECTORY_SEPARATOR . 'migrations';
-				if (file_exists($migrationsDir)) {
-					try {
-						$moduleClassName::install((new Dao($this->get(MysqlDataSource::class), '')), 'development');
-					} catch (Exception $e) {
-					}
-				}
-			}
-		}
+		return $this->moduleClassNames;
 	}
+
 }
