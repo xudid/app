@@ -21,6 +21,7 @@ final class CreateRole extends AbstractMigration
 		$table = $this->table('users');
 		$table->addColumn('name', 'string')
 			->addColumn('email', 'email')
-			->addColumn('password', 'string');
+			->addColumn('password', 'string')
+			->create();
     }
 }
