@@ -50,7 +50,7 @@ interface ModuleInterface
 
     public function getSubModuleClassNames():array;
 
-    public static function install(DaoInterface $dao, string $environment);
+	public static function install(DaoInterface $dao, string $database, string $environment);
     public function update(DataSourceInterface $dataSource, string $environment);
     public function remove(DataSourceInterface $dataSource, string $environment);
 }

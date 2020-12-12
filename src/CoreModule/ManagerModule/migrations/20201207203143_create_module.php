@@ -18,6 +18,10 @@ final class CreateModule extends AbstractMigration
      */
     public function change(): void
     {
-
+		$table = $this->table('modules');
+		$table->addColumn('name', 'string')
+			->addColumn('description', 'string')
+			->addColumn('module_class', 'string')
+			->create();
     }
 }

@@ -19,10 +19,15 @@ final class CreateUsersRoles extends AbstractMigration
      */
     public function change(): void
     {
-		$table = $this->table('users');
-		$table->addColumn('name', 'string')
-			->addColumn('email', 'email')
-			->addColumn('password', 'string')
+		$table = $this->table('users_ roles',
+		[
+			'id' => false,
+			'primary_key' => ['users_id', 'roles_id']
+		]);
+		$table->addColumn('users_id', 'integer')
+			->addColumn('roles_id', 'integer')
+			->addForeignKey('users_id', 'users', 'id')
+			->addForeignKey('roles_if', 'roles', 'id')
 			->create();
     }
 }

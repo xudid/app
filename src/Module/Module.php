@@ -150,9 +150,9 @@ class Module implements ModuleInterface
         // TODO: Implement getSubModuleClassNames() method.
     }
 
-	public static function exists(string $className)
+	public static function exists(string $className) : bool
 	{
-		class_exists($className) && is_subclass_of($className, Module::class);
+		return class_exists($className) && is_subclass_of($className, Module::class);
     }
 
     public static function getMigrationsDir(string $className)

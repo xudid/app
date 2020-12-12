@@ -18,6 +18,14 @@ final class CreateRolesModules extends AbstractMigration
      */
     public function change(): void
     {
+		$roles_actions = $this->table('roles_modules');
 
+		$roles_actions
+			->addColumn('roles_id', 'integer')
+			->addColumn('modules_id', 'integer')
+			->addColumn('authorized', 'smallint')
+			->addForeignKey('roles_id', 'roles', 'id')
+			->addForeignKey('modules_id', 'actions', 'id')
+			->create();
     }
 }

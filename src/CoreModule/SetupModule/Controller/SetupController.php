@@ -8,6 +8,7 @@ use App\CoreModule\ManagerModule\Model\Action;
 use App\CoreModule\ManagerModule\Model\Module;
 use App\Module\Module as ApplicationModule;
 use Entity\Database\Dao;
+use Entity\Database\DataSourceInterface;
 use Entity\Database\Mysql\MysqlDataSource;
 
 class SetupController
@@ -17,7 +18,7 @@ class SetupController
         $this->app = App::getInstance();
     }
 
-    private function installDB()
+	private function installDB()
 	{
 		$modulesClassName = $this->app->getModulesClassName();
 		foreach ($modulesClassName as $moduleClassName) {
@@ -27,20 +28,25 @@ class SetupController
 
 	private function installModule(string $moduleClassName)
 	{
-		if (Module::exists($moduleClassName)) {
+		if (ApplicationModule::exists($moduleClassName)) {
 			$migrationsDir = $moduleClassName::getMigrationsDir($moduleClassName);
 			if (file_exists($migrationsDir)) {
 				try {
-					$moduleClassName::install((new Dao($this->get(MysqlDataSource::class), '')), 'development');
+					$dataSource = $this->app->get(DataSourceInterface::class);
+					$dao = new Dao($dataSource);
+					$environment = $this->app::getEnvironment();
+					$database = 'development_db';
+					$moduleClassName::install($dao, $database, $environment);
 				} catch (Exception $e) {
+					var_dump($e->getMessage());
 				}
-
 			}
 		}
 	}
 
     public function setup()
     {
+		$this->installDB();
         $fileName = App::$configDirectory . DIRECTORY_SEPARATOR . App::$modules;
         //test if modules , actions tables exists
         //if not create them

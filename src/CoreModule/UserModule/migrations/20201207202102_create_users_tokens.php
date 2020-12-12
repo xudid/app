@@ -18,6 +18,13 @@ final class CreateUsersTokens extends AbstractMigration
      */
     public function change(): void
     {
+		$users_tokens = $this->table('users_tokens');
 
+		$users_tokens->addColumn('users_id')
+			->addColumn('token')
+			->addColumn('expiration')
+			->addColumn('used')
+			->addForeignKey('users_id', 'users', 'id')
+			->create();
     }
 }

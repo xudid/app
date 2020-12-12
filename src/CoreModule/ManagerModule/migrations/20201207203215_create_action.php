@@ -18,6 +18,12 @@ final class CreateAction extends AbstractMigration
      */
     public function change(): void
     {
-
+		$table = $this->table('actions');
+		$table->addColumn('name', 'string')
+			->addColumn('type', 'string')
+			->addColumn('route_name', 'string')
+			->addColumn('modules_id', 'integer')
+			->addForeignKey('modules_id', 'modules', 'id')
+			->create();
     }
 }
