@@ -3,7 +3,7 @@ declare(strict_types=1);
 
 use Phinx\Migration\AbstractMigration;
 
-final class CreateRole extends AbstractMigration
+final class CreateUser extends AbstractMigration
 {
     /**
      * Change Method.
@@ -20,7 +20,7 @@ final class CreateRole extends AbstractMigration
     {
 		$table = $this->table('users');
 		$table->addColumn('name', 'string')
-			->addColumn('email', 'email')
+			->addColumn('email', 'string')
 			->addColumn('password', 'string')
 			->create();
     }

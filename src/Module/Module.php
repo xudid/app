@@ -160,15 +160,15 @@ class Module implements ModuleInterface
         return static::getDir($className) . DIRECTORY_SEPARATOR . 'migrations';
     }
 
-    public static function  install(DaoInterface $dao, string $environment)
-    {
-        $adapter = new PhinxAdapter($dao, static::getDir(), $environment);
-        $adapter->setDbName('brickdb');
-        $adapter->enableOutPut();
-        $adapter->run();
-        //dump($adapter->getOutput());
+	public static function  install(DaoInterface $dao, string $database, string $environment)
+	{
+		$adapter = new PhinxAdapter($dao, static::getDir(), $environment);
+		$adapter->setDbName($database);
+		$adapter->enableOutPut();
+		$adapter->run();
+		//dump($adapter->getOutput());
 
-    }
+	}
 
 
 

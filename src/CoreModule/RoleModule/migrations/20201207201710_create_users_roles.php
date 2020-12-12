@@ -27,7 +27,7 @@ final class CreateUsersRoles extends AbstractMigration
 		$table->addColumn('users_id', 'integer')
 			->addColumn('roles_id', 'integer')
 			->addForeignKey('users_id', 'users', 'id')
-			->addForeignKey('roles_if', 'roles', 'id')
+			->addForeignKey('roles_id', 'roles', 'id')
 			->create();
     }
 }
