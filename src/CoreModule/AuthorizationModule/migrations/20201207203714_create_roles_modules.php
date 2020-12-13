@@ -23,7 +23,7 @@ final class CreateRolesModules extends AbstractMigration
 		$roles_actions
 			->addColumn('roles_id', 'integer')
 			->addColumn('modules_id', 'integer')
-			->addColumn('authorized', 'smallint')
+			->addColumn('authorized', 'boolean')
 			->addForeignKey('roles_id', 'roles', 'id')
 			->addForeignKey('modules_id', 'actions', 'id')
 			->create();

@@ -120,9 +120,8 @@ class RolesController extends Controller
         $role = new Role([]);
         $role->setName($_POST['role_name']);
         $role->setDescription($_POST['role_description']);
-        $manager = $this->app->getModelManager(Role::class);
-        $manager->insert($role);
-        $this->app->redirectTo('/roles');
+        $this->modelManager(Role::class)->insert($role);
+        $this->redirect('/roles');
     }
 
     /**
@@ -131,8 +130,8 @@ class RolesController extends Controller
     public function delete($params)
     {
         $id = $params[0];
-        $manager = $this->app->getModelManager(Role::class);
-        $manager->delete($id);
+        $this->app->getModelManager(Role::class)
+			->delete($id);
         $this->app->redirectTo('/roles/');
     }
 
@@ -144,7 +143,7 @@ class RolesController extends Controller
     {
         $id = $params[0];
 
-        $manager = $this->app->getModelManager(Role::class);
+        $manager = $this->modelManager(Role::class);
         $role = $manager->findById($id);
         if ($role == false) {
             return $this->showError("Role not found");
@@ -162,7 +161,6 @@ class RolesController extends Controller
      */
     public function search()
     {
-
         $view = new EntityView();
         $searchFactory = new SearchViewFactory(Role::class);
         $searchFactory->withAction('search');
@@ -170,9 +168,9 @@ class RolesController extends Controller
         $searchView = $searchFactory->getView($this->app);
 
         try {
-            $searchBinder = new SearchBinder(ServerRequest::fromGlobals());
+            $searchBinder = new SearchBinder($this->request);
             $params = $searchBinder->bind(Role::class);
-            $dtv = (new DataTableView(Role::class, $this->app->getModelManager(Role::class)))
+            $dtv = (new DataTableView(Role::class, $this->modelManager(Role::class)))
                 ->withBaseUrl("/roles");
             $dtv->where($params);
 

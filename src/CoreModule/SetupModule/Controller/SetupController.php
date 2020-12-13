@@ -4,17 +4,23 @@ namespace App\CoreModule\SetupModule\Controller;
 
 
 use App\App;
+use App\Controller;
 use App\CoreModule\ManagerModule\Model\Action;
 use App\CoreModule\ManagerModule\Model\Module;
+use App\CoreModule\RoleModule\Model\Role;
+use App\CoreModule\SetupModule\Views\GodRoleForm;
+use App\CoreModule\SetupModule\Views\RootInitForm;
+use App\CoreModule\UserModule\Model\User;
 use App\Module\Module as ApplicationModule;
 use Entity\Database\Dao;
 use Entity\Database\DataSourceInterface;
-use Entity\Database\Mysql\MysqlDataSource;
+use Ui\Handler\RequestHandler;
 
-class SetupController
+class SetupController extends Controller
 {
     public function __construct()
     {
+    	parent::__construct();
         $this->app = App::getInstance();
     }
 
@@ -44,10 +50,46 @@ class SetupController
 		}
 	}
 
+	private function initGodRole()
+	{
+		$method = $this->request->getMethod();
+		if ($method == 'GET') {
+			$this->render(new GodRoleForm());
+		}
+		if ($method == 'POST') {
+			$role = new Role();
+			$handler = new RequestHandler($this->request);
+			$handler->handle($role);
+			$this->modelManager(Role::class)->insert($role);
+			$this->initRoot($role);
+		}
+	}
+
+	private function initRoot(Role $role)
+	{
+		$method = $this->request->getMethod();
+		if ($method == 'GET') {
+			$this->render(new RootInitForm());
+		}
+		if ($method == 'POST') {
+			$user = new User();
+			$handler = new RequestHandler($this->request);
+			$handler->handle($user);
+			$password = $handler->get('users_password_confirmation');
+			$confirmedPassword = $handler->get('users_password_confirmation');
+			if ($password == $confirmedPassword) {
+				//register user to db
+			} else {
+				// show alert message
+			}
+		}
+	}
+
     public function setup()
     {
 		$this->installDB();
         $fileName = App::$configDirectory . DIRECTORY_SEPARATOR . App::$modules;
+        $this->initGodRole();
         //test if modules , actions tables exists
         //if not create them
         //if AuthorizationModule
@@ -55,7 +97,7 @@ class SetupController
         //if not create them
 
         if (file_exists($fileName)) {
-            $moduleManager = $this->app->getModelManager(Module::class);
+            $moduleManager = $this->modelManager(Module::class);
             $builder = $moduleManager->builder();
 
             $query = $builder->select('module_class')->from('modules');
@@ -128,7 +170,7 @@ class SetupController
     private function getInstalledModules()
     {
         $modules = [];
-        $moduleManager = $this->app->getModelManager(Module::class);
+        $moduleManager = $this->modelManager(Module::class);
         $builder = $moduleManager->builder();
 
         $query = $builder->select()->from('modules');
@@ -150,7 +192,7 @@ class SetupController
     private function getInstalledModuleActions($moduleId)
     {
         $actions = [];
-        $moduleManager = $this->app->getModelManager(Action::class);
+        $moduleManager = $this->modelManager(Action::class);
         $builder = $moduleManager->builder();
 
         $query = $builder->select()->from('actions')->where('modules_id', '=', $moduleId);
@@ -165,7 +207,7 @@ class SetupController
 
     private function getRootAuthorizedActions()
     {
-        $moduleManager = $this->app->getModelManager(Action::class);
+        $moduleManager = $this->modelManager(Action::class);
         $builder = $moduleManager->builder();
         $request = $builder->select()->from('roles_actions')->where('roles_id', '=', 1);
         $authorizedActions = $builder->execute($request);
@@ -186,7 +228,7 @@ class SetupController
 
     private function authorizeRoot()
     {
-        $moduleManager = $this->app->getModelManager(Action::class);
+        $moduleManager = $this->modelManager(Action::class);
         $builder = $moduleManager->builder();
         $installedActions = $moduleManager->findAll() ?: [];
         $authorizedActions = $this->getRootAuthorizedActions() ?: [];
