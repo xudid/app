@@ -10,7 +10,7 @@ return [
 	'root_dir' => $rootDir,
 	'config_dir' => $rootDir .DIRECTORY_SEPARATOR . 'config',
 	'temp_dir' => $rootDir . DIRECTORY_SEPARATOR . 'tmp',
-	'site_modules' => 'modules.php',
+	'cache_dir' => $rootDir . DIRECTORY_SEPARATOR . 'cache',
 
 	'core_modules' => [
 		App\CoreModule\SetupModule\SetupModule::class,

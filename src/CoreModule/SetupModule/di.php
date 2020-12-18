@@ -1,7 +1,8 @@
 <?php
 
 use App\CoreModule\SetupModule\SetupController;
+use function DI\create;
 
 return [
-   SetupController::class => \DI\create(SetupController::class)
+   SetupController::class => create(SetupController::class)
 ];

@@ -40,7 +40,7 @@ class Controller
         $this->app->redirectTo($url);
     }
 
-    public function routeTo(string $routeName, array $params)
+    public function routeTo(string $routeName, array $params = [])
     {
         App::redirectToRoute($routeName, $params);
     }

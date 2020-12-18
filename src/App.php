@@ -8,8 +8,6 @@ use App\Pipeline\Pipeline;
 use DI\ContainerBuilder;
 use DI\DependencyException;
 use DI\NotFoundException;
-use Entity\Database\Dao;
-use Entity\Database\Mysql\MysqlDataSource;
 use Entity\Model\ManagerFactory;
 use Entity\Model\ManagerInterface;
 use Exception;
@@ -31,7 +29,9 @@ use function Http\Response\send;
  */
 class App
 {
-	public static $configDirectory;
+	/**
+	 * @var mixed
+	 */
 	private array $moduleClassNames = [];
 	private array $errors = [];
 	private static ContainerInterface $container;
@@ -39,9 +39,12 @@ class App
 	private Pipeline $pipeline;
 	private static string $root;
 	private static string $temp;
+	private static string $cache;
 	public static string $modules;
-	private static $config;
-	private static $routes = [];
+
+	private static array $config;
+	private static array $databaseConfiguration;
+	private static array $routes = [];
 	private static $instance;
 	/**
 	 * @var ContainerBuilder
@@ -62,33 +65,52 @@ class App
 
 		// make convention on definitions path
 		if (!file_exists('../config/config.php')) {
-			throw new Exception('No config file');
+			throw new Exception('No configuration file');
 		}
 		self::$config = require_once('../config/config.php');
 
-		if (file_exists('../config/routes.php')) {
-			self::$routes = require_once('../config/routes.php');
+		if (!file_exists('../config/db.php')) {
+			throw new Exception('No database configuration file');
 		}
+		self::$databaseConfiguration = require_once('../config/db.php');
+
+		if (!file_exists('../config/routes.php')) {
+			throw new Exception('No routes configuration file');
+		}
+		self::$routes = require_once('../config/routes.php');
+
+		if (!file_exists('../config/modules.php')) {
+			throw new Exception('No modules configuration file');
+		}
+		self::$modules = require_once('../config/modules.php');
 
 		self::$root = self::$config['root_dir'];
 		self::$temp = self::$config['temp_dir'];
-		self::$modules = self::$config['site_modules'];
+		self::$cache = self::$config['cache_dir'];
+
 		$this->appName = self::$config['app_name'];
-		$this->appConfigDir = self::$config['config_dir'];
-		self::$configDirectory = self::$config['config_dir'];
-		$this->containerBuilder = new ContainerBuilder();
-		$this->moduleClassNames = array_merge(
-			self::$config['core_modules'] ?? [],
-			self::$config['app_modules'] ?? []
-		);
+
+
+		// autoloader for models proxy classes
 		spl_autoload_register(function ($class) {
 			$fileClassName = str_replace('\\', DIRECTORY_SEPARATOR, $class);
-			$fileName = dirname($_SERVER['DOCUMENT_ROOT']) . DIRECTORY_SEPARATOR . 'cache/classes' . DIRECTORY_SEPARATOR . $fileClassName . '.php';
+			$fileName = self::$cache . DIRECTORY_SEPARATOR . 'classes' . DIRECTORY_SEPARATOR . $fileClassName . '.php';
 			if (file_exists($fileName)) {
 				require_once $fileName;
 			}
 		});
-		$this->containerBuilder->addDefinitions(require self::$config['config_dir'] . DIRECTORY_SEPARATOR . 'di.php');
+
+		$this->containerBuilder = new ContainerBuilder();
+		$this->moduleClassNames = array_merge(
+			self::$config['core_modules'] ?? [],
+			self::$modules ?? []
+		);
+
+		if (!file_exists('../config/di.php')) {
+			throw new Exception('No injection dependency definitions file');
+		}
+		$injenctionDependencyDefinitions = require_once('../config/di.php');
+		$this->containerBuilder->addDefinitions($injenctionDependencyDefinitions);
 		foreach ($this->moduleClassNames as $moduleClassName) {
 			if (is_string($moduleClassName)) {
 				$this->loadContainerDefinitions($moduleClassName);
@@ -142,19 +164,21 @@ class App
 		if (self::$container->has($name)) {
 			try {
 				return self::$container->get($name);
-			} catch (DependencyException $e) {
+			} catch (DependencyException | NotFoundException $e) {
 				dump(__CLASS__ . __METHOD__);
-			} catch (NotFoundException $e) {
-				dump(__CLASS__ . __METHOD__);
-
 			}
 		}
 
 	}
 
-	public static function autorize(string $moduleClass, array $types = [])
+	/**
+	 * @param string $moduleClass
+	 * @param array $types
+	 * @return array
+	 */
+	public static function autorize(string $moduleClass, array $types = []): array
 	{
-		// un utilisateur est autorisé a faire 0a n action appartenant a un module
+		// un utilisateur est autorisé a faire 0 a n action appartenant a un module
 		// Table User Table des modules Tables actions Table des actions
 		// table Module primary key id  Module namespace
 		// table Action id pk module_id fk name
@@ -183,11 +207,17 @@ class App
 		return file_exists($configFileName) ? require_once $configFileName : [];
 	}
 
+	/**
+	 * @return mixed
+	 */
 	public static function getEnvironment()
 	{
 		return self::$config['environment'];
 	}
 
+	/**
+	 * @return array
+	 */
 	public static function getApplicationRoutes() :array
 	{
 		return self::$routes;
@@ -209,25 +239,18 @@ class App
 		if ($response) {
 			$statuscode = $response->getStatusCode();
 			switch ($statuscode) {
-				case 200:
-					send($response);
-					break;
-
 				case 403:
+					//if AuthModule loaded render login
+					// else render 403.html
 					/*$view = $renderer->render("403.html",null,'../vendor/Brick/src/ErrorPage');
 					$response->getBody()->write($view);
 					send($response);*/
 					break;
 
 				case 404:
-
-					//$view = $renderer->render("404.html",null,"../vendor/Brick/src/ErrorPage");
-
+					// Todo render 404.html
 					$response->getBody()->rewind();
-
 					$response->getBody()->write('404 Not Found');
-
-
 					send($response);
 					break;
 
@@ -239,7 +262,13 @@ class App
 		}
 	}
 
-	public static function get(string $key)
+	/**
+	 * @param string $key
+	 * @return mixed
+	 * @throws DependencyException
+	 * @throws NotFoundException
+	 */
+	public static function get(string $key): mixed
 	{
 		if (self::$container && self::$container->has($key)) {
 			return self::$container->get($key);
