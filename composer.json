@@ -26,7 +26,7 @@
     "twbs/bootstrap": "4.5.0",
     "xudid/core": ">=0.0.17",
     "xudid/router": "^0.05.0",
-    "xudid/entity": "0.02.2",
+    "xudid/entity": "0.02",
     "xudid/ui": "^0.128.1",
     "xudid/renderer" : "0.01.2"
   },
