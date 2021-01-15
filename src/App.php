@@ -19,8 +19,8 @@ use Psr\Http\Server\MiddlewareInterface;
 use Renderer\Renderer;
 use Router\Route;
 use Router\Router;
-use function Http\Response\send;
 use function Core\Debug\dump;
+use function Http\Response\send;
 
 
 /**
@@ -97,8 +97,8 @@ class App
 
 		$this->containerBuilder = new ContainerBuilder();
 		$this->moduleClassNames = array_merge(
-			self::$config['core_modules'] ?? [],
-			self::$modules ?? []
+			self::getCoreModules(),
+			self::getApplicationModules()
 		);
 
 		if (!file_exists('../config/di.php')) {
@@ -208,7 +208,7 @@ class App
 	/**
 	 * @return array
 	 */
-	public static function getApplicationRoutes() :array
+	public static function getApplicationRoutes(): array
 	{
 		return self::$routes;
 	}
@@ -410,5 +410,16 @@ class App
 	{
 		return $this->moduleClassNames;
 	}
+
+	public static function getCoreModules()
+	{
+		return self::$config['core_modules'] ?? [];
+	}
+
+	public static function getApplicationModules()
+	{
+		return self::$modules ?? [];
+	}
+
 
 }
