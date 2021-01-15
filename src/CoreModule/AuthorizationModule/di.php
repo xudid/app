@@ -8,6 +8,6 @@ use function DI\get;
 
 
 return [
-    AuthorizationController::class => create(AuthorizationController::class),
-    AuthorizationMiddleware::class => create(AuthorizationMiddleware::class)->constructor(get(AuthController::class), get(AuthorizationController::class))
+	AuthorizationController::class => create(AuthorizationController::class),
+	AuthorizationMiddleware::class => create(AuthorizationMiddleware::class)->constructor(get(AuthController::class), get(AuthorizationController::class), get('default_allowed_routes'))
 ];

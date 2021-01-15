@@ -1,0 +1,40 @@
+/*Text*/
+/*Colors*/
+.txt-white{
+    color: white;
+}
+.text-primary{
+    color:#0d47a1;
+}
+.secondary{
+    color:#6a1b9a;
+}
+/*Colors*/
+
+/*Alignement*/
+.txt-center{
+    text-align:center
+}
+.txt-right{
+    text-align: right;
+}
+.txt-left{
+    text-align: left;
+}
+/*Alignement*/
+
+/*Decorations*/
+.no-text-decoration{
+    text-decoration: none;
+}
+
+.text-decoration-white{
+    text-decoration-color: white;
+}
+.text-decoration-primary{
+    text-decoration-color: #0d47a1;
+}
+.text-decoration-secondary{
+    text-decoration-color: #6a1b9a;
+}
+/*Decorations*/

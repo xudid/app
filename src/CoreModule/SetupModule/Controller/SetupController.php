@@ -14,7 +14,6 @@ use App\CoreModule\UserModule\Model\User;
 use App\Module\Module as ApplicationModule;
 use Entity\Database\Dao;
 use Entity\Database\DataSourceInterface;
-use Ui\Handler\RequestHandler;
 
 class SetupController extends Controller
 {
@@ -43,9 +42,80 @@ class SetupController extends Controller
 					$environment = $this->app::getEnvironment();
 					$database = 'development_db';
 					$moduleClassName::install($dao, $database, $environment);
-				} catch (Exception $e) {
+				} catch (\Exception $e) {
 					var_dump($e->getMessage());
 				}
+			}
+		}
+	}
+
+	private function seedModuleManager()
+	{
+		$modulesToInstall = array_merge(App::getCoreModules(), App::getApplicationModules());
+		if ($modulesToInstall) {
+			$moduleManager = $this->modelManager(Module::class);
+			$builder = $moduleManager->builder();
+
+			$query = $builder->select('module_class')->from('modules');
+			$installedModules = $builder->execute($query);
+
+			$installedModules = array_map(function ($class) {
+				$name = $class['module_class'];
+				return str_replace('::class', '', $name);
+			}, $installedModules);
+		}
+
+		foreach ($modulesToInstall as $appModule) {
+			if (!in_array($appModule, $installedModules)) {
+				if (class_exists($appModule) && is_subclass_of($appModule, ApplicationModule::class)) {
+					$moduleManager = $moduleManager->manage(Module::class);
+					$name = $appModule::getName();
+					$description = $appModule::getDescription();
+					$module = new Module();
+					$module->setModuleClass($appModule);
+					$module->setName($name);
+					$module->setDescription($description);
+					try {
+						$module = $moduleManager->insert($module);
+					} catch (\Exception $e) {
+						echo '<pre>' . var_dump($e->getMessage());
+					}
+					$installedModules[] = $appModule;
+				}
+			}
+		}
+		$actionManager = $moduleManager->manage(Action::class);
+		foreach ($this->getInstalledModules() as $module) {
+			// move code to get module routes in module class
+			$installedActions = $this->getInstalledModuleActions($module->getId());
+			$class = $module->getModuleClass();
+			$dir = $class::getDir();
+			$routesFileName = $dir . DIRECTORY_SEPARATOR . 'routes.php';
+			if (file_exists($routesFileName)) {
+				$routes = require $routesFileName;
+
+				// code to move
+				$routes = is_array($routes) ? $routes : [];
+				foreach ($routes as $route) {
+					if(!array_key_exists('action', $route)) {
+						continue;
+					}
+					if (array_key_exists($route['name'], $installedActions)) {
+						continue;
+					}
+					if(array_key_exists('description', $route['action'])) {
+						$description = $route['action']['description'];
+					} else {
+						$description = $route['name'];
+					}
+					$action = new Action();
+					$action->setName($description);
+					$action->setType($route['action']['type'] ?? '');
+					$action->setRouteName($route['name'] ?? '');
+					$action->setModule($module);
+					$actionManager->insert($action);
+					$installedActions[$route['name']] = $action;
+				};
 			}
 		}
 	}
@@ -70,6 +140,7 @@ class SetupController extends Controller
 		$method = $this->request->getMethod();
 		if ($method == 'GET') {
 			$role = $this->modelManager(Role::class)->findById($id);
+			var_dump($role);
 			return $this->render(new RootInitForm($role));
 		}
 		if ($method == 'POST') {
@@ -84,95 +155,33 @@ class SetupController extends Controller
 				$user->setRoles([$role]);
 
 				$this->modelManager(User::class)->insert($user);
+				$this->authorizeRoot($user);
+				return App::redirectToRoute('modules_index');
 			} else {
 				// show alert message
 			}
 		}
 	}
 
+	private function authorizeGod()
+	{
+
+	}
+
 	public function setup()
 	{
-		$this->installDB();
-		$fileName = App::$configDirectory . DIRECTORY_SEPARATOR . App::$modules;
-		$this->routeTo('init_firstrole');
-		exit;
 		//test if modules , actions tables exists
 		//if not create them
 		//if AuthorizationModule
 		//test if users, roles, users_roles, roles_modules and roles_action exists
 		//if not create them
-
-		if (file_exists($fileName)) {
-			$moduleManager = $this->modelManager(Module::class);
-			$builder = $moduleManager->builder();
-
-			$query = $builder->select('module_class')->from('modules');
-			$installedModules = $builder->execute($query);
-
-			$installedModules = array_map(function ($class) {
-				$name = $class['module_class'];
-				return str_replace('::class', '', $name);
-			}, $installedModules);
-
-			$modulesToInstall = require $fileName;
-			foreach ($modulesToInstall as $appModule) {
-				if (!in_array($appModule, $installedModules)) {
-					if (class_exists($appModule) && is_subclass_of($appModule, ApplicationModule::class)) {
-						$name = $appModule::getName();
-						$description = $appModule::getDescription();
-						$module = new Module();
-						$module->setModuleClass($appModule);
-						$module->setName($name);
-						$module->setDescription($description);
-						$moduleManager->insert($module);
-						$installedModules[] = $appModule;
-					}
-				}
-			}
-			$actionManager = $moduleManager->manage(Action::class);
-
-			foreach ($this->getInstalledModules() as $module) {
-				// move code to get module routes in module class
-				$installedActions = $this->getInstalledModuleActions($module->getId());
-				$class = $module->getModuleClass();
-				$dir = $class::getDir();
-				$routesFileName = $dir . DIRECTORY_SEPARATOR . 'routes.php';
-				if (file_exists($routesFileName)) {
-					$routes = require $routesFileName;
-
-					// code to move
-					$routes = is_array($routes) ? $routes : [];
-					foreach ($routes as $route) {
-						if(!array_key_exists('action', $route)) {
-							continue;
-						}
-						if (array_key_exists($route['name'], $installedActions)) {
-							continue;
-						}
-						if(array_key_exists('description', $route['action'])) {
-							$description = $route['action']['description'];
-						} else {
-							$description = $route['name'];
-						}
-						$action = new Action();
-						$action->setName($description);
-						$action->setType($route['action']['type'] ?? '');
-						$action->setRouteName($route['name'] ?? '');
-						$action->setModule($module);
-						$actionManager->insert($action);
-						$installedActions[$route['name']] = $action;
-					};
-				}
-			}
-		}
-
-		//if
-		//dump($this->getRootAuthorizedActions());
-		$this->authorizeRoot();
-
-		return App::redirectToRoute('modules_index');
+		$this->installDB();
+		$this->seedModuleManager();
+		//$coreModules = App::getCoreModules();
+		$this->routeTo('init_firstrole');
 	}
 
+	// move to SetupManager class
 	private function getInstalledModules()
 	{
 		$modules = [];
@@ -194,6 +203,7 @@ class SetupController extends Controller
 	}
 
 
+	// move to SetupManager class
 
 	private function getInstalledModuleActions($moduleId)
 	{
@@ -210,6 +220,8 @@ class SetupController extends Controller
 		}
 		return $actions;
 	}
+
+	// move to SetupManager class
 
 	private function getRootAuthorizedActions()
 	{
@@ -232,8 +244,12 @@ class SetupController extends Controller
 		return $actions;
 	}
 
-	private function authorizeRoot()
+	// move to SetupManager class
+
+	private function authorizeRoot(User $user)
 	{
+		$roles = $user->getRoles();
+		$role = $roles[0];
 		$moduleManager = $this->modelManager(Action::class);
 		$builder = $moduleManager->builder();
 		$installedActions = $moduleManager->findAll() ?: [];
@@ -242,7 +258,7 @@ class SetupController extends Controller
 			if (array_key_exists($installedAction->getRouteName(), $authorizedActions)) {
 				continue;
 			}
-			$request = $builder->insert('roles_actions')->columns('roles_id', 'actions_id', 'authorized')->values(['roles_id' => 1, 'actions_id' => $installedAction->getId(), 'authorized' => 1]);
+			$request = $builder->insert('roles_actions')->columns('roles_id', 'actions_id', 'authorized')->values(['roles_id' => $role->getId(), 'actions_id' => $installedAction->getId(), 'authorized' => 1]);
 			$builder->enableDebug();
 			$builder->execute($request);
 		}

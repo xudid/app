@@ -1,5 +1,11 @@
-@import "color.css";
+/*Colors*/
+@import "bg-color.css";
+@import "text.css";
+@import "border.css";
 @import "display.css";
+@import "margin.css";
+@import "padding.css";
+@import "table.css";
 
 
 body {

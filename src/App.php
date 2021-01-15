@@ -8,6 +8,7 @@ use App\Pipeline\Pipeline;
 use DI\ContainerBuilder;
 use DI\DependencyException;
 use DI\NotFoundException;
+use Entity\Model\Autoloader;
 use Entity\Model\ManagerFactory;
 use Entity\Model\ManagerInterface;
 use Exception;
@@ -19,6 +20,7 @@ use Renderer\Renderer;
 use Router\Route;
 use Router\Router;
 use function Http\Response\send;
+use function Core\Debug\dump;
 
 
 /**
@@ -40,7 +42,7 @@ class App
 	private static string $root;
 	private static string $temp;
 	private static string $cache;
-	public static string $modules;
+	public static array $modules;
 
 	private static array $config;
 	private static array $databaseConfiguration;
@@ -63,7 +65,7 @@ class App
 	{
 		self::$instance = $this;
 
-		// make convention on definitions path
+		// make convention on definitions path + Configuration class in App package
 		if (!file_exists('../config/config.php')) {
 			throw new Exception('No configuration file');
 		}
@@ -91,14 +93,7 @@ class App
 		$this->appName = self::$config['app_name'];
 
 
-		// autoloader for models proxy classes
-		spl_autoload_register(function ($class) {
-			$fileClassName = str_replace('\\', DIRECTORY_SEPARATOR, $class);
-			$fileName = self::$cache . DIRECTORY_SEPARATOR . 'classes' . DIRECTORY_SEPARATOR . $fileClassName . '.php';
-			if (file_exists($fileName)) {
-				require_once $fileName;
-			}
-		});
+		Autoloader::register(self::$cache);
 
 		$this->containerBuilder = new ContainerBuilder();
 		$this->moduleClassNames = array_merge(
@@ -127,11 +122,6 @@ class App
 					$this->loadRoutes($routes);
 				}
 			}
-			/*foreach ($this->moduleClassNames as $moduleClassName) {
-				if (is_string($moduleClassName)) {
-					$this->installModule($moduleClassName);
-				}
-			}*/
 
 			// create middleware pipeline
 			$this->pipeline = self::$container->get(Pipeline::class);
@@ -143,7 +133,7 @@ class App
 				}
 			}
 		} catch (Exception $e) {
-			dump($e);
+			echo '<pre>' . var_dump($e->getMessage());
 		}
 
 	}
@@ -165,7 +155,7 @@ class App
 			try {
 				return self::$container->get($name);
 			} catch (DependencyException | NotFoundException $e) {
-				dump(__CLASS__ . __METHOD__);
+				echo '<pre>' . var_dump(__CLASS__ . __METHOD__);
 			}
 		}
 
@@ -268,7 +258,7 @@ class App
 	 * @throws DependencyException
 	 * @throws NotFoundException
 	 */
-	public static function get(string $key): mixed
+	public static function get(string $key)
 	{
 		if (self::$container && self::$container->has($key)) {
 			return self::$container->get($key);
@@ -333,7 +323,7 @@ class App
 	{
 		try {
 			$factory = self::get(ManagerFactory::class);
-
+			$factory->setProxyCachePath(self::$cache);
 			if (class_exists($managerInterfaceName)) {
 				$factory->setManagerInterface($managerInterfaceName);
 
@@ -357,7 +347,7 @@ class App
 
 	public function internalError(string $message)
 	{
-		dump($message);
+		echo '<pre>' . var_dump($message);
 	}
 
 	public function showInfo(string $message)

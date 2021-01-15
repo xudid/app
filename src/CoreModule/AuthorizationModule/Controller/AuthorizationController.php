@@ -31,25 +31,21 @@ class AuthorizationController extends Controller
 	public function isAuthorize(array $roles, string $routeName)
 	{
 		$manager = $this->modelManager(Action::class, AuthorizationManager::class);
-		$builder = $manager->builder();
-		$request= $builder->select('roles.id')
-			->from('roles')
-			->join('roles_actions', 'roles.id', 'roles_id')
-			->join('actions', 'actions_id', 'actions.id')
-			->where('route_name', '=', $routeName)
-			->where('authorized', '=', ' 1');
-		$result = $builder->execute($request);
-		$authorizedRolesIds = array_column($result, 'id');
-		foreach ($roles as $role) {
-			//root can access every thing
-			if ($role->getId() == 1 ) {
-				return true;
-			}
-			// if user has one role authorized for this action
-			if (in_array($role->getId(), $authorizedRolesIds)) {
-				return true;
+		$result = $manager->getAuthorizedRolesIds($routeName);
+		if ($result) {
+			$authorizedRolesIds = array_column($result, 'id');
+			foreach ($roles as $role) {
+				//root can access every thing
+				if ($role->getId() == 1 ) {
+					return true;
+				}
+				// if user has one role authorized for this action
+				if (in_array($role->getId(), $authorizedRolesIds)) {
+					return true;
+				}
 			}
 		}
+
 		return false;
 	}
 
