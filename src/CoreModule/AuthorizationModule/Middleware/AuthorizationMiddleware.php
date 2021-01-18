@@ -37,7 +37,6 @@ class AuthorizationMiddleware implements MiddlewareInterface
 	function process(ServerRequestInterface $request, RequestHandlerInterface $handler): ResponseInterface
 	{
 		$this->response = $handler->handle($request);
-		$user = $this->authController->isloggedin();
 		$route = $request->getAttribute('route');
 
 		if (!$route) {
@@ -45,10 +44,11 @@ class AuthorizationMiddleware implements MiddlewareInterface
 			return $response;
 		}
 
-		if($route && in_array($route->getName(), $this->defaultAllowedRoutes)) {
+		if(in_array($route->getName(), $this->defaultAllowedRoutes)) {
 			return $this->response;
 		}
 
+		$user = $this->authController->isloggedin();
 		$authorized = false;
 		if ($user) {
 			$authorized = $this->authorizationController
@@ -61,17 +61,6 @@ class AuthorizationMiddleware implements MiddlewareInterface
 			$this->response = $this->response->withHeader("Location", "/login");
 			return $this->response;
 		}
-	}
-
-	/*
-	* @param ServerRequestInterface $request
-	* @param array $rights
-	* @return ResponseInterface;
-	*/
-	private function processRights($handler, $request, $dest, $rights)
-	{
-		$response = $handler->handle($request);
-		return $response;
-
+		return $this->response;
 	}
 }
