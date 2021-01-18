@@ -1,22 +1,18 @@
 <?php
 
-
 namespace App\CoreModule\ManagerModule;
 
-
-use App\App;
-use App\CoreModule\ManagerModule\Controller\ModuleManagerController;
 use App\Module\Module;
 
 class ManagerModule extends Module
 {
-    public function __construct(App $app)
-    {
-        parent::__construct($app);
-    }
+	protected static string $name = 'Module Manager';
+	protected static string $description = <<<TEXT
+Module managment
+TEXT;
 
-    public static function getDir() : string
-    {
-        return __DIR__;
-    }
+	public static function getDir() : string
+	{
+		return __DIR__;
+	}
 }
