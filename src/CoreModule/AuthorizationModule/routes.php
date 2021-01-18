@@ -4,6 +4,10 @@ use App\CoreModule\AuthorizationModule\Controller\AuthorizationController;
 
 return [
     [
+		'action' => [
+			'description' => 'Edit role authorizations',
+			'type' => 'MODIFY'
+		],
         'method' => 'GET',
         'path' => "/authorizations/role/:id",
         'name' => 'authorizations_roles_edit',
@@ -13,6 +17,10 @@ return [
         'params' => [['id' => '[0-9]+']]
     ],
     [
+		'action' => [
+			'description' => 'Edit role authorizations',
+			'type' => 'UPDATE'
+		],
         'method' => 'POST',
         'path' => "/authorizations/modules",
         'name' => 'authorizations_roles_register',
@@ -21,6 +29,10 @@ return [
         },
     ],
     [
+		'action' => [
+			'description' => 'Edit role actions authorizations',
+			'type' => 'MODIFY'
+		],
         'method' => 'GET',
         'path' => "/authorizations/role/:roles_id/module/:modules_id/actions",
         'name' => 'authorizations_role_module_actions_edit',
@@ -33,6 +45,10 @@ return [
             ]
     ],
     [
+		'action' => [
+			'description' => 'Edit role actions authorizations',
+			'type' => 'UPDATE'
+		],
         'method' => 'POST',
         'path' => '/authorizations/actions',
         'name' => 'authorizations_role_actions_register',
