@@ -93,7 +93,7 @@ class AuthorizationController extends Controller
 	{
 		$roleId = $_POST['role_id'];
 		$modules = $_POST['modules'];
-		$builder = App::get(QueryBuilder::class);
+		$builder = $this->modelManager(Module::class)->builder();
 		foreach ($modules as $moduleId => $authorized) {
 			$authorized = $authorized == 'on' ? 1 : 0;
 			$request = $builder::insert('roles_modules');
@@ -133,16 +133,20 @@ class AuthorizationController extends Controller
 		$builder = $actionsManager->builder();
 		$request = $builder->select('actions_id')
 			->from('roles_actions')
-			->join('actions', 'actions_id', 'id')
+			->join('actions', 'actions_id', 'actions.id')
 			->where('roles_id','=', $roleId)
 			->where('modules_id','=', $moduleId)
 			->where('authorized', '=', true);
 		$authorizedActions = $builder->execute($request);
-		$authorizedActions = array_column($authorizedActions,'actions_id');
+		if ($authorizedActions) {
+			$authorizedActions = array_column($authorizedActions,'actions_id');
+		} else {
+			$authorizedActions = [];
+		}
 
-		$form = new RoleActionAuthorizationView($roleId, $authorizedActions, ...$actions);
+		$form = new RoleActionAuthorizationView($roleId, $authorizedActions , ...$actions);
 		$view = new EntityView();
-		$view->setTitle("Autorisations Actions ");
+		$view->setTitle("Authorized actions ");
 		$view->setSubTitle(Inflector::ucwords($role->getName()));
 		$view->add($form);
 		return App::render($view);
@@ -156,7 +160,7 @@ class AuthorizationController extends Controller
 			$this->app->internalError('try to register actions without module and role');
 		}
 		$modules = $_POST['actions'];
-		$builder = App::get(QueryBuilder::class);
+		$builder = $this->modelManager(Action::class)->builder();
 		foreach ($modules as $actionId => $authorized) {
 			$authorized = $authorized == 'on' ? 1 : 0;
 			$request = $builder::insert('roles_actions');
