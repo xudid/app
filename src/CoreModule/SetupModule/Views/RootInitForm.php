@@ -25,6 +25,7 @@ class RootInitForm extends Form
 		$this->feed(
 			(new HiddenInput('role_id'))->setValue($role->getId()),
 			(new EmailInput('user_email'))
+				->setName('user_email')
 				->SetPlaceholder('email')
 				->setClass('form-input'),
 			(new TextInput())->setName('user_name')
