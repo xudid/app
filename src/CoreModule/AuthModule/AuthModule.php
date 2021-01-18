@@ -2,10 +2,7 @@
 
 namespace App\CoreModule\AuthModule;
 
-
-use App\App;
 use App\Module\Module;
-use Psr\Container\ContainerInterface;
 
 /**
  * Class AuthModule
@@ -13,18 +10,18 @@ use Psr\Container\ContainerInterface;
  */
 class AuthModule extends Module
 {
-    public function __construct()
-    {
-        /*$firewall->withRule("IPV6", "::1", "/login", ["ACCEPT" => null])
-            ->withRule("IPV6", "::1", "/auth", ["ACCEPT" => null])
-            ->withRule("IPV6", "::1", "/logout", ["ACCEPT" => null])
-            ->withRule("IPV6", "::1", "/demo", ["ACCEPT" => null])
-            ->withRule("IPV6", "::1", "/demo", ["LOG" => null]);
-    }*/
-    }
-    public static function getDir()
-    {
-        return __DIR__;
-    }
-
+	/*$firewall->withRule("IPV6", "::1", "/login", ["ACCEPT" => null])
+			->withRule("IPV6", "::1", "/auth", ["ACCEPT" => null])
+			->withRule("IPV6", "::1", "/logout", ["ACCEPT" => null])
+			->withRule("IPV6", "::1", "/demo", ["ACCEPT" => null])
+			->withRule("IPV6", "::1", "/demo", ["LOG" => null]);
+	}*/
+	protected static string $name = 'Authentication module';
+	protected static string $description = <<<TEXT
+User login, logout
+TEXT;
+	public static function getDir()
+	{
+		return __DIR__;
+	}
 }
