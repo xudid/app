@@ -140,7 +140,6 @@ class SetupController extends Controller
 		$method = $this->request->getMethod();
 		if ($method == 'GET') {
 			$role = $this->modelManager(Role::class)->findById($id);
-			var_dump($role);
 			return $this->render(new RootInitForm($role));
 		}
 		if ($method == 'POST') {
@@ -154,30 +153,25 @@ class SetupController extends Controller
 				$user->initPassword($password);
 				$user->setRoles([$role]);
 
-				$this->modelManager(User::class)->insert($user);
+				$manager = $this->modelManager(User::class);
+				$manager->insert($user);
+				$builder = $manager->builder();
+				$request = $builder->insert('users_roles')
+					->columns('users_id', 'roles_id')
+					->values(['users_id' => $user->getId(), 'roles_id' => $role->getId()]);
+				$builder->execute($request);
 				$this->authorizeRoot($user);
 				return App::redirectToRoute('modules_index');
 			} else {
-				// show alert message
+				$this->routeTo('init_firstuser', ['id' => $role->getId()]);
 			}
 		}
 	}
 
-	private function authorizeGod()
-	{
-
-	}
-
 	public function setup()
 	{
-		//test if modules , actions tables exists
-		//if not create them
-		//if AuthorizationModule
-		//test if users, roles, users_roles, roles_modules and roles_action exists
-		//if not create them
 		$this->installDB();
 		$this->seedModuleManager();
-		//$coreModules = App::getCoreModules();
 		$this->routeTo('init_firstrole');
 	}
 
@@ -231,6 +225,8 @@ class SetupController extends Controller
 		$authorizedActions = $builder->execute($request);
 		if ($authorizedActions) {
 			$authorizedActionsIds = array_column($authorizedActions, 'actions_id');
+		} else {
+			$authorizedActionsIds = [];
 		}
 
 		$installedActions = $moduleManager->findAll() ?: [];
@@ -259,7 +255,6 @@ class SetupController extends Controller
 				continue;
 			}
 			$request = $builder->insert('roles_actions')->columns('roles_id', 'actions_id', 'authorized')->values(['roles_id' => $role->getId(), 'actions_id' => $installedAction->getId(), 'authorized' => 1]);
-			$builder->enableDebug();
 			$builder->execute($request);
 		}
 	}
