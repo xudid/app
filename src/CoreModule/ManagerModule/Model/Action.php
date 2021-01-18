@@ -108,7 +108,7 @@ class Action extends Model
 	 * @param Module|null $module
 	 * @return Action
 	 */
-	public function setModule(?Module $module): Action
+	public function setModule($module): Action
 	{
 		$this->module = $module;
 		return $this;
