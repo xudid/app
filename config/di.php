@@ -15,13 +15,17 @@ $environment = App::getEnvironment();
 return [
 	'css' => [
 		'/css/color.css',
+		//'/css/button.css',
+		'/css/togglebutton.css',
 		'/css/view.css',
 		'/css/form.css',
 		'/css/ui.css',
-		'/display.css',
+		//'/css/display.css',
 		'/css/collapsible.css',
 		'/css/navbar.css',
-		'/css/modal.css'
+		'/css/modal.css',
+		'https://fonts.googleapis.com/icon?family=Material+Icons',
+		'https://cdn.jsdelivr.net/npm/bootstrap@5.0.0-beta1/dist/css/bootstrap.min.css'
 	],
 	'js' => [
 		'js/app.js',
