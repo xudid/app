@@ -32,53 +32,88 @@ class Page extends AppPage
 		$router = $app->get('router');
 
 		$accountModalContent  = new Div();
-		$accountMenu = new Modal('account_modal', $accountModalContent);
-		$accountMenu->popup()->setClass('popup popup-sm centered');
-		$accountMenu->content()->setClass('justify-center');
+		$accountMenu = new Modal('account_modal', [$accountModalContent]);
+		$accountMenu->modal()->setClass('modal-sm centered');
+		//$accountMenu->content()->setClass('justify-center');
 
 		if (Session::has('user')) {
 			$usersBar = new Action(['LIST' => $router->generateUrl('users'), 'ADD' => $router->generateUrl('users_new'), 'SEARCH' => $router->generateUrl('users_search')]);
-			$usersCard = new InfoCard('Utilistateurs', 'test');
+			$usersCard = new InfoCard('Utilistateurs');
 			$usersCard->body()->add($usersBar);
+			$usersCard->setClass('d-grid');
+
 			$rolesBar = new Action(['LIST' => $router->generateUrl('roles_index'), 'ADD' => $router->generateUrl('roles_new'), 'SEARCH' => 'roles_search']);
-			$rolesCard = new InfoCard('Roles', 'test');
+			$rolesCard = new InfoCard('Roles');
 			$rolesCard->body()->add($rolesBar);
-			$modalMenuContent1 = new Div(
+			$rolesCard->setClass('d-grid');
+
+			$modulesBar = new Action(['LIST' => $router->generateUrl('modules_index')]);
+			$modulesCard = new InfoCard('Modules');
+			$modulesCard->body()->add($modulesBar);
+			$modulesCard->setClass('d-grid');
+
+			$routesBar = new Action(['LIST' => $router->generateUrl('modules_index')]);
+			$routesCard = new InfoCard('Routes');
+			$routesCard->body()->add($modulesBar);
+			$routesCard->setClass('d-grid');
+
+			$administrationMenuGrid = new Div(
 				$usersCard,
 				$rolesCard,
-				(new A('Setup', '/setup'))->setClass('mr-2 mt-2'),
-				(new A('Modules', '/modules'))->setClass('mr-2 mt-2'),
-				(new A('Routes', '/routes'))->setClass('mr-2 mt-2'),
+				$modulesCard,
+				$routesCard,
+			);
+			$administrationMenuGrid->setClass('grid');
+			$administrationMenu = new Modal('administration_modal', [$administrationMenuGrid]);
+			$administrationMenu->setTriggerText('Administration')->setHeaderText('Administration');
+
+			$jobsBar = new Action(['LIST' => $router->generateUrl('modules_index')]);
+			$jobsCard = new InfoCard('Gammes');
+			$jobsCard->body()->add($jobsBar);
+			$jobsCard->setClass('d-grid');
+
+			$planificationBar = new Action(['LIST' => $router->generateUrl('modules_index')]);
+			$planificationCard = new InfoCard('Planification');
+			$planificationCard->body()->add($planificationBar);
+			$planificationCard->setClass('d-grid');
+
+			$sequencingMenuGrid = new Div(
+				$jobsCard,
+				$planificationCard,
 			);
 
-			$modalMenu = new Modal('nav_modal_1', $modalMenuContent1);
-			$modalMenu->setTriggerText('Administration')->setHeaderText('Administration');
-			$modalMenuContent2 = new Div(
-				(new A('Gammes', '/gammes'))->setClass('mr-2 mt-2'),
-				(new A('Programme', '/sequencing'))->setClass('mr-2 mt-2'),
-			);
-			$modalMenuContent3 = new Div(
-				(new A('Articles', '/articles'))->setClass('mr-2 mt-2'),
-				(new A('Stock', '/stock'))->setClass('mr-2 mt-2'),
+			$articlesBar = new Action(['LIST' => $router->generateUrl('modules_index')]);
+			$articlesCard = new InfoCard('Articles');
+			$articlesCard->body()->add($articlesBar);
+			$articlesCard->setClass('d-grid');
+
+			$stockBar = new Action(['LIST' => $router->generateUrl('modules_index')]);
+			$stockCard = new InfoCard('Stock');
+			$stockCard->body()->add($stockBar);
+			$stockCard->setClass('d-grid');
+			$stockMenuGrid = new Div(
+				$articlesCard,
+				$stockCard,
 			);
 
-			$modalMenu2 = new Modal('nav_modal_2', $modalMenuContent2);
-			$modalMenu3 = new Modal('nav_modal_3', $modalMenuContent3);
-			$modalMenu2->setTriggerText('Planning')->setHeaderText('Planning');
-			$modalMenu3->setTriggerText('Stock')->setHeaderText('Stock');
+			$sequencingMenu = new Modal('sequencing_modal', [$sequencingMenuGrid]);
+			$stockMenu = new Modal('stock_modal', [$stockMenuGrid]);
+			$sequencingMenu->setTriggerText('Planning')->setHeaderText('Planning');
+			$stockMenu->setTriggerText('Stock')->setHeaderText('Stock');
 
 			$user = Session::get('user');
 			$detailButton = (new A('My Account', '/users/myaccount'))->setClass('btn btn-success');
-			$logoutButton = (new A('Logout', '/logout'))->setClass('button');
-			$accountCard = new InfoCard($user->getName(), $detailButton);
+			$logoutButton = (new A('Logout', '/logout'))->setClass('btn');
+			$accountCard = new InfoCard($user->getName());
 			$accountCard->body()->setClass('text-center');
-			$accountCard->footer()->add($logoutButton)->setClass('d-flex justify-center');
+			$accountCard->footer()->feed($detailButton, $logoutButton)->setClass('d-flex justify-center');
+			$accountMenu->setHeaderText('Logged as : ');
 			$accountMenu->setTriggerText($user->getName());
 			$accountModalContent->add($accountCard);
 			$this->feedNavbarLeft(
-				new NavbarItem($modalMenu),
-				new NavbarItem($modalMenu2),
-				new NavbarItem($modalMenu3),
+				new NavbarItem($administrationMenu),
+				new NavbarItem($sequencingMenu),
+				new NavbarItem($stockMenu),
 
 			);
 			$this->feedNavbarRight(new NavbarItem($accountMenu, NavbarItem::RIGHT),);
