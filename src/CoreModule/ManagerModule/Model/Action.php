@@ -4,34 +4,37 @@
 namespace App\CoreModule\ManagerModule\Model;
 
 
+use Entity\Database\Attributes\Column;
+use Entity\Database\Attributes\ManyToMany;
+use Entity\Database\Attributes\Table;
 use Entity\Model\Model;
 
 /**
  * Class Action
  * @package App\CoreModule\ManagerModule\Model
- * @Table(name="actions")
  */
+#[Table('actions')]
 class Action extends Model
 {
 	/**
 	 * @var string
-	 * @Column(type="string")
 	 */
+	#[Column('string')]
 	protected string $name = '';
 	/**
 	 * @var string
-	 * @Column(type="string")
 	 */
+	#[Column('string')]
 	protected string $type = '';
 	/**
 	 * @var string
-	 * @Column(type="string")
 	 */
+	#[Column('string')]
 	protected string $routeName = '';
 	/**
 	 * @var Module|null
-	 * @OneToOne(targetEntity="App\CoreModule\ManagerModule\Model\Module")
 	 */
+	#[OneToOne('App\CoreModule\ManagerModule\Model\Module')]
 	protected ?Module $module;
 
 	/**

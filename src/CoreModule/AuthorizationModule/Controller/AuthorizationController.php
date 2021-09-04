@@ -13,8 +13,6 @@ use App\CoreModule\RoleModule\Model\Role;
 use App\CoreModule\UserModule\Model\User;
 use App\Session\Session;
 use Doctrine\Common\Inflector\Inflector;
-use Entity\Database\QueryBuilder\QueryBuilder;
-use Exception;
 use Ui\Views\EntityView;
 
 /**
@@ -55,9 +53,9 @@ class AuthorizationController extends Controller
 		if (Session::has('user')) {
 			$user = Session::get('user');
 			$roles = $user->getRoles();
-			$rolesManager = $this->modelManager(Role::class);
 			foreach ($roles as $role) {
-				$result = $rolesManager->findAssociationValuesBy(Module::class, $role);
+				$result = $this->modelManager(Role::class)
+					->findAssociationValuesBy(Module::class, $role);
 				if ($result) {
 					$modules = array_merge($modules, $result);
 				}
@@ -73,14 +71,14 @@ class AuthorizationController extends Controller
 		$role = $roleManager->findById($id);
 		$modules = $modulesManager->findAll();
 		$builder = $modulesManager->builder();
-		$request = $builder->select('modules_id')
+		$authorizedModules = $builder->select('modules_id')
 			->from('roles_modules')
 			->where('roles_id','=', $id)
-			->where('authorized', '=', true);
-		$authorizedModules = $builder->execute($request);
+			->where('authorized', '=', true)
+			->execute();
 		$authorizedModules = array_column($authorizedModules,'modules_id');
 
-		$form = new RoleModuleAuthorizationView($id,$authorizedModules,...$modules);
+		$form = new RoleModuleAuthorizationView($this->router, $id,$authorizedModules,...$modules);
 		$view = new EntityView();
 		$view->setTitle('Autorisations Modules ');
 		$view->setSubTitle(Inflector::ucwords($role->getName()));
@@ -96,16 +94,16 @@ class AuthorizationController extends Controller
 		$builder = $this->modelManager(Module::class)->builder();
 		foreach ($modules as $moduleId => $authorized) {
 			$authorized = $authorized == 'on' ? 1 : 0;
-			$request = $builder::insert('roles_modules');
-			$request->columns('roles_id', 'modules_id', 'authorized');
-			$request->values(['roles_id' => $roleId, 'modules_id' => $moduleId, 'authorized' => $authorized]);
-			$result = $builder::execute($request);
+			$result = $builder->insert('roles_modules')
+				->columns('roles_id', 'modules_id', 'authorized')
+				->values(['roles_id' => $roleId, 'modules_id' => $moduleId, 'authorized' => $authorized])
+				->execute();
 			if (!$result) {
-				$request = $builder::update('roles_modules');
-				$request->set('authorized', $authorized);
-				$request->where('roles_id', '=', $roleId);
-				$request->where('modules_id', '=', $moduleId);
-				$builder::execute($request);
+				$builder->update('roles_modules')
+					->set('authorized', $authorized)
+					->where('roles_id', '=', $roleId)
+					->where('modules_id', '=', $moduleId)
+					->execute();
 			}
 		}
 		$this->app->redirectTo('/authorizations/role/' . $roleId);
@@ -115,6 +113,7 @@ class AuthorizationController extends Controller
 	{
 		$app = App::getInstance();
 		$modulesManager = $app->getModelManager(Module::class);
+
 		return $modulesManager->findBy(['module_class' => $moduleClass]);
 	}
 
@@ -122,28 +121,27 @@ class AuthorizationController extends Controller
 	{
 		$modulesManager = $this->modelManager(Module::class);
 		$module = $modulesManager->findById($moduleId);
+
 		$rolesManager = $this->modelManager(Role::class);
 		$role = $rolesManager->findById($roleId);
+
 		$actionsManager = $this->modelManager(Action::class);
 		$actions = $actionsManager->findBy(['modules_id' => $moduleId]);
+
 		foreach ($actions as $action) {
 			$action->setModule($module);
 		}
 
-		$builder = $actionsManager->builder();
-		$request = $builder->select('actions_id')
-			->from('roles_actions')
-			->join('actions', 'actions_id', 'actions.id')
-			->where('roles_id','=', $roleId)
-			->where('modules_id','=', $moduleId)
-			->where('authorized', '=', true);
-		$authorizedActions = $builder->execute($request);
+		$manager = $this->modelManager(
+			Role::class,
+			AuthorizationManager::class
+		);
+		$authorizedActions = $manager->getAuthorizedModuleActions($role, $module);
 		if ($authorizedActions) {
 			$authorizedActions = array_column($authorizedActions,'actions_id');
 		} else {
 			$authorizedActions = [];
 		}
-
 		$form = new RoleActionAuthorizationView($roleId, $authorizedActions , ...$actions);
 		$view = new EntityView();
 		$view->setTitle("Authorized actions ");
@@ -154,25 +152,25 @@ class AuthorizationController extends Controller
 
 	public function registerActionsAuthorizations()
 	{
-		$roleId = $_POST['role_id'];
-		$moduleId = $_POST['module_id'];
+		$roleId = $this->requestHandler->get('role_id');
+		$role = $this->modelManager(Role::class)->findById($roleId);
+		$moduleId = $this->requestHandler->get('module_id');
+
 		if (!$roleId || !$moduleId) {
-			$this->app->internalError('try to register actions without module and role');
+			$this->alert('try to register actions without module and role', 'info');
 		}
-		$modules = $_POST['actions'];
-		$builder = $this->modelManager(Action::class)->builder();
-		foreach ($modules as $actionId => $authorized) {
+		$actions = $this->requestHandler->get('actions');
+		$manager = $this->modelManager(
+			Role::class,
+			AuthorizationManager::class
+		);
+		foreach ($actions as $actionId => $authorized) {
 			$authorized = $authorized == 'on' ? 1 : 0;
-			$request = $builder::insert('roles_actions');
-			$request->columns('roles_id', 'actions_id', 'authorized');
-			$request->values(['roles_id' => $roleId, 'actions_id' => $actionId, 'authorized' => $authorized]);
-			$result = $builder::execute($request);
-			if (!$result) {
-				$request = $builder::update('roles_actions');
-				$request->set('authorized', $authorized);
-				$request->where('roles_id', '=', $roleId);
-				$request->where('actions_id', '=', $actionId);
-				$result = $builder::execute($request);
+			$action = $this->modelManager(Action::class)->findById($actionId);
+			if ($authorized) {
+				$manager->authorizeAction($role, $action);
+			} else {
+				$manager->removeActionAuthorization($role, $action);
 			}
 		}
 		$this->redirect("/authorizations/role/$roleId/module/$moduleId/actions");
@@ -185,18 +183,20 @@ class AuthorizationController extends Controller
 		$actions = [];
 		if (Session::has('user')) {
 			$user = Session::get('user');
+
 			$userManager = $app->getModelManager(User::class);
 			$roles = $userManager->findAssociationValuesBy(Role::class, $user);
+
 			$actionsManager = $app->getModelManager(Action::class);
 			$builder = $actionsManager->builder();
 			foreach ($roles as $role) {
-				$request = $builder->select('actions.*')
+				$authorizedActions = $builder->select('actions.*')
 					->from('roles_actions')
 					->join('actions', 'actions_id', 'actions.id')
 					->where('roles_actions.roles_id','=', $role->getId())
 					->where('modules_id','=', $module->getId())
-					->where('authorized', '=', true);
-				$authorizedActions = $builder->execute($request);
+					->where('authorized', '=', true)
+					->execute();
 				if ($authorizedActions) {
 					$actions = array_merge($actions, $authorizedActions);
 				}

@@ -1,8 +1,6 @@
 <?php
 
-
 namespace App;
-
 
 use App\CoreModule\UserModule\Model\User;
 use App\CoreModule\UserModule\Views\UserAuthFormFilter;
@@ -10,6 +8,7 @@ use App\Session\Session;
 use Ui\HTML\Elements\Empties\Br;
 use Ui\HTML\Elements\Nested\A;
 use Ui\HTML\Elements\Nested\Div;
+use Ui\HTML\Elements\Nested\P;
 use Ui\Views\FormFactory;
 use Ui\Widgets\Cards\InfoCard;
 use Ui\Widgets\Toolbars\Action;
@@ -25,37 +24,32 @@ class Page extends AppPage
 	public function __construct()
 	{
 		parent::__construct();
-		$app =App::getInstance();
+		$app = App::getInstance();
 		$this->importCss(...$app::get('css'));
 		$this->importScript(...$app::get('js'));
 
 		$router = $app->get('router');
 
-		$accountModalContent  = new Div();
+		$accountModalContent = new Div();
 		$accountMenu = new Modal('account_modal', [$accountModalContent]);
 		$accountMenu->modal()->setClass('modal-sm centered');
-		//$accountMenu->content()->setClass('justify-center');
 
 		if (Session::has('user')) {
 			$usersBar = new Action(['LIST' => $router->generateUrl('users'), 'ADD' => $router->generateUrl('users_new'), 'SEARCH' => $router->generateUrl('users_search')]);
 			$usersCard = new InfoCard('Utilistateurs');
 			$usersCard->body()->add($usersBar);
-			$usersCard->setClass('d-grid');
 
-			$rolesBar = new Action(['LIST' => $router->generateUrl('roles_index'), 'ADD' => $router->generateUrl('roles_new'), 'SEARCH' => 'roles_search']);
+			$rolesBar = new Action(['LIST' => $router->generateUrl('roles'), 'ADD' => $router->generateUrl('roles_new'), 'SEARCH' => 'roles_search']);
 			$rolesCard = new InfoCard('Roles');
 			$rolesCard->body()->add($rolesBar);
-			$rolesCard->setClass('d-grid');
 
 			$modulesBar = new Action(['LIST' => $router->generateUrl('modules_index')]);
 			$modulesCard = new InfoCard('Modules');
 			$modulesCard->body()->add($modulesBar);
-			$modulesCard->setClass('d-grid');
 
-			$routesBar = new Action(['LIST' => $router->generateUrl('modules_index')]);
+			$routesBar = new Action(['LIST' => $router->generateUrl('routes')]);
 			$routesCard = new InfoCard('Routes');
-			$routesCard->body()->add($modulesBar);
-			$routesCard->setClass('d-grid');
+			$routesCard->body()->add($routesBar);
 
 			$administrationMenuGrid = new Div(
 				$usersCard,
@@ -63,38 +57,36 @@ class Page extends AppPage
 				$modulesCard,
 				$routesCard,
 			);
-			$administrationMenuGrid->setClass('grid');
+			$administrationMenuGrid->setClass('grid-3');
 			$administrationMenu = new Modal('administration_modal', [$administrationMenuGrid]);
 			$administrationMenu->setTriggerText('Administration')->setHeaderText('Administration');
 
 			$jobsBar = new Action(['LIST' => $router->generateUrl('modules_index')]);
 			$jobsCard = new InfoCard('Gammes');
 			$jobsCard->body()->add($jobsBar);
-			$jobsCard->setClass('d-grid');
 
 			$planificationBar = new Action(['LIST' => $router->generateUrl('modules_index')]);
 			$planificationCard = new InfoCard('Planification');
 			$planificationCard->body()->add($planificationBar);
-			$planificationCard->setClass('d-grid');
 
 			$sequencingMenuGrid = new Div(
 				$jobsCard,
 				$planificationCard,
 			);
+			$sequencingMenuGrid->setClass('grid-3');
 
 			$articlesBar = new Action(['LIST' => $router->generateUrl('modules_index')]);
 			$articlesCard = new InfoCard('Articles');
 			$articlesCard->body()->add($articlesBar);
-			$articlesCard->setClass('d-grid');
 
 			$stockBar = new Action(['LIST' => $router->generateUrl('modules_index')]);
 			$stockCard = new InfoCard('Stock');
 			$stockCard->body()->add($stockBar);
-			$stockCard->setClass('d-grid');
 			$stockMenuGrid = new Div(
 				$articlesCard,
 				$stockCard,
 			);
+			$stockMenuGrid->setClass('grid-3');
 
 			$sequencingMenu = new Modal('sequencing_modal', [$sequencingMenuGrid]);
 			$stockMenu = new Modal('stock_modal', [$stockMenuGrid]);
@@ -136,6 +128,26 @@ class Page extends AppPage
 			$form->add($linkContainer);
 			$accountModalContent->add($form);
 			$this->feedNavbarRight(new NavbarItem($accountMenu, NavbarItem::RIGHT),);
+
+		}
+	}
+
+	public function setInfos($infos = [])
+	{
+		foreach ($infos as $info) {
+			$p = new P($info);
+			$p->setClass('bg-primary-light px-16 py-16');
+			$this->setHeader(new P($p));
+		}
+
+	}
+
+	public function setErrors($errors = [])
+	{
+		foreach ($errors as $error) {
+			$p = new P($error);
+			$p->setClass('bg-danger-light px-16 py-16');
+			$this->setHeader(new P($p));
 		}
 	}
 }

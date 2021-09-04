@@ -4,7 +4,6 @@ namespace App\CoreModule\UserModule\Controller;
 
 use App\App;
 use App\Controller;
-use App\CoreModule\AuthorizationModule\Model\Autorization;
 use App\CoreModule\RoleModule\Model\Role;
 use App\CoreModule\UserModule\Model\User;
 use App\CoreModule\UserModule\Model\UsersManager;
@@ -16,6 +15,7 @@ use ReflectionException;
 use Ui\Views\EntityView;
 use Ui\Widgets\Button\AddButton;
 use Ui\Widgets\Table\TableLegend;
+use Exception;
 
 // to make facade for widgets constructors
 
@@ -24,13 +24,11 @@ use Ui\Widgets\Table\TableLegend;
  */
 class UsersController extends Controller
 {
-
 	private $moduleClass = UserModule::class;
 
 	function __construct()
 	{
 		parent::__construct();
-
 	}
 
 	/**
@@ -39,69 +37,70 @@ class UsersController extends Controller
 	public function new()
 	{
 		try {
-			return ($this->formFactory(User::class))
+			$view = $this->formFactory(User::class)
 				->withAction('/users/create')
-				->setFormTitle("Nouvel utilisateur")
-				->getForm($this->app);
-		} catch (ReflectionException $e) {
-			$this->app->internalError(
-				'Failed to display new User Form in : ' .
-				__CLASS__ .
-				' ' .
-				__METHOD__
-			);
+				->setFormTitle("New user")
+				->getForm();
+		} catch (ReflectionException $exception) {
+			$view = $this->processError($exception->getMessage());
+		} finally {
+			return $this->render($view);
 		}
-
 	}
 
 	/**
-	 * @param array $params : params to update a user
+	 * @param $id User Id
 	 * @return string|\Ui\HTML\Elements\Bases\Base
 	 */
-	public function edit($params)
+	public function edit($id)
 	{
-		$id = $params[0];
 		$user = $this->modelManager(User::class)->findById($id);
+		$view = '';
 		if ($user == false) {
-			$this->app->showInfo('User not found');
+			$this->alert('User not found', 'infos');
 		}
 		try {
-			return $this->formFactory($user)
-				->setFormTitle('Edition utilisateur')
-				->withAction("users/$id/update")
-				->getForm($this->app);
-		} catch (ReflectionException $e) {
-			$this->app->internalError(
-				'Error in : ' . __CLASS__ . ', ' . __METHOD__);
+			$url = $this->router->generateUrl('users_update', ['id' => $id], 'POST');
+			$view = $this->formFactory($user)
+				->setFormTitle('Edit user')
+				->withAction($url)
+				->getForm();
+		} catch (Exception $exception) {
+			$view = $this->processError('Error in : ' . __CLASS__ . ', ' . __METHOD__ . ' ' . $exception->getMessage());
+		} finally {
+			return $this->render($view);
 		}
 	}
 
 	public function editSelf()
 	{
 		if (Session::has('user')) {
-			return $this->render($this->formFactory(Session::get('user'))
-				->setFormTitle('Mon compte')
+			$user = Session::get('user');
+			return $this->render($this->formFactory($user)
+				->setFormTitle('My account')
 				->getForm());
+		} else {
+			$this->routeTo('login');
 		}
 	}
 
 	/**
-	 * @param array $params : params to show a user
-	 * @return string
+	 * @param $id
+	 * @return mixed
+	 * @throws Exception
 	 */
-	public function show($id)
+	public function show($id): mixed
 	{
-		$this->viewFactory = $this->entityViewFactory(User::class, $id);
-		$this->viewFactory->setCurrentPath("/users/:id");
-		$actions = App::autorize($this->moduleClass, ['LIST', 'SEARCH', 'NEW', 'MODIFY']);
+		$factory = $this->entityViewFactory(User::class, $id);
+		$factory->setCurrentPath("/users/:id");
+
+		// Todo respect action type order
+		$actions = App::autorize($this->moduleClass, ['EDIT', 'DELETE', 'NEW', 'LIST', 'SEARCH']);
 		foreach ($actions as $action => $routeName) {
 			$url = $this->router->generateUrl($routeName, ['id' => $id]);
-			$this->viewFactory->useAction($action, $url);
-
+			$factory->useAction($action, $url);
 		}
-
-		//$this->viewFactory->setCollapsible();
-		return $this->render($this->viewFactory->getView());
+		return $this->render($factory->getView());
 	}
 
 	/**
@@ -112,35 +111,41 @@ class UsersController extends Controller
 		//Todo make RequestHandler able to process password fields
 		$user = new User();
 		$this->requestHandler->handle($user);
+
 		$role = new Role();
 		$this->requestHandler->handle($role, 'roles');
 		$user->setRoles([$role]);
-		$manager = $this->modelManager(User::class);
+
+		$manager = $this->modelManager(User::class, UsersManager::class);
 		$id = ($manager->insert($user))->getId();
+
 		$this->app->redirectTo('/users/' . $id);
+		$this->routeTo('users_show', ['id' => $id]);
 	}
 
 	/**
 	 * @param array $params : params to delete a user
-	 * @throws \Exception
+	 * @throws Exception
 	 */
 	public function delete(array $params)
 	{
 		$id = $params['id'];
+
 		$manager = $this->modelManager(User::class);
-		$manager->delete($id);
-		$this->app->showInfo("You have deleted user with id :$id");
-		$this->app->redirectTo('/users/');
+		$user = $manager->findById($id);
+		if ($user) {
+			$manager->delete($user);
+		}
+		$this->alert('You have deleted user with id: ' . $id);
+		$this->routeTo('users');
 	}
 
 	/**
 	 * Update user with
-	 * @param array $params parametes to update user
+	 * @param $id
 	 */
-	public function update($params)
+	public function update($id)
 	{
-		$id = $params;
-
 		$manager = $this->modelManager(User::class);
 		$user = $manager->findById($id);
 		if ($user == false) {
@@ -151,7 +156,7 @@ class UsersController extends Controller
 		$user->setEmail($_POST['user_email']);
 		//$user->setRole($_POST['user_role']);
 		$manager->update($user);
-		$this->app->redirectTo('/users/' . $id);
+		$this->routeTo('users_show', ['id' => $id]);
 	}
 
 
@@ -186,14 +191,18 @@ class UsersController extends Controller
 			}*/
 			$resultsView->setTitle("<h2>Resultat de la recherche</h2>");
 			$resultsTable = $resultsView->getView($this->app);
-		} catch (ReflectionException $e) {
-			$this->app->internalError("Failed to search users");
-		} catch (\Exception $e) {
-			dump($e);
+		} catch (Exception $exception) {
+			$this->alert("Failed to search users");
+			$this->processError($exception->getMessage());
+			$resultsTable = '';
 		}
 		return $view->feed($searchView, $resultsTable);
 	}
 
+	/**
+	 * @param $id
+	 * @return RoleEditionForm
+	 */
 	public function editRoles($id)
 	{
 		return new RoleEditionForm(
@@ -203,16 +212,23 @@ class UsersController extends Controller
 		);
 	}
 
+	/**
+	 * @param $id
+	 */
 	public function addRole($id)
 	{
 		$role = new Role();
-		$this->requestHandler->handle($role,'roles');
+		$this->requestHandler->handle($role, 'roles');
 		$userManager = $this->modelManager(User::class, UsersManager::class);
 		$user = $userManager->findById($id);
 		$userManager->addRole($user, $role);
 		$this->routeTo('users_roles', ['id' => $id]);
 	}
 
+	/**
+	 * @param $userId
+	 * @param $roleId
+	 */
 	public function deleteRole($userId, $roleId)
 	{
 		$userManager = $this->modelManager(User::class, UsersManager::class);
@@ -226,20 +242,24 @@ class UsersController extends Controller
 	public function index()
 	{
 		try {
-			$factory = ($this->tableFactory(User::class))->withBaseUrl('/users');
+			$factory = ($this->tableFactory(User::class))
+				->withBaseUrl('/users');
 			$legendTitle = new TableLegend(
-				"<h4>Liste des Utilisateurs</h4>",
+				"<h4>Users</h4>",
 				TableLegend::TOP_LEFT
 			);
 			$addButton = new AddButton();
-			$addButton->size('xs')->setOnClick("location.href='/users/new'");
+			$addButton->size('xs')
+				->setOnClick("location.href='/users/new'");
 			$legendButton = new TableLegend($addButton, TableLegend::TOP_RIGHT);
 			$factory->addALegend($legendTitle);
 			$factory->addALegend($legendButton);
 			$factory->setRouter($this->router);
-			return $this->render($factory->getView($this->app));
-		} catch (ReflectionException $e) {
-			$this->app->internalError("Failed to load users list");
+			$view = $factory->getView($this->app);
+		} catch (Exception $exception) {
+			$view = $this->processError($exception->getMessage());
+		} finally {
+			return $this->render($view);
 		}
 	}
 }

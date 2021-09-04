@@ -1,24 +1,49 @@
+
 /*Text*/
 /*Colors*/
-.txt-white{
+.text-white{
     color: white;
 }
 .text-primary{
     color:#0d47a1;
 }
-.secondary{
+.text-secondary{
     color:#6a1b9a;
 }
 /*Colors*/
 
 /*Alignement*/
-.txt-center{
+.text-center{
     text-align:center
 }
-.txt-right{
+h1.text-center{
+    text-align:center
+}
+
+h2.text-center{
+    text-align:center
+}
+
+h3.text-center{
+    text-align:center
+}
+
+h4.text-center{
+    text-align:center
+}
+
+h5.text-center{
+    text-align:center
+}
+
+h6.text-center{
+    text-align:center
+}
+
+.text-right{
     text-align: right;
 }
-.txt-left{
+.text-left{
     text-align: left;
 }
 /*Alignement*/
@@ -38,3 +63,8 @@
     text-decoration-color: #6a1b9a;
 }
 /*Decorations*/
+
+.text-truncate {
+    overflow: hidden;
+    text-overflow: ellipsis;
+}

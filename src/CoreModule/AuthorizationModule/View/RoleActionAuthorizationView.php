@@ -6,6 +6,7 @@ use App\CoreModule\ManagerModule\Model\Action;
 use Ui\HTML\Elements\Bases\Span;
 use Ui\HTML\Elements\Empties\Br;
 use Ui\HTML\Elements\Empties\Hr;
+use Ui\HTML\Elements\Nested\Div;
 use Ui\HTML\Elements\Nested\Form;
 use Ui\Widgets\Button\SubmitButton;
 use Ui\Widgets\Button\Toggle;
@@ -24,16 +25,15 @@ class RoleActionAuthorizationView extends Form
 			->setValue($roleId);
 		$this->add($roleIdInput);
 		$this->add($moduleIdInput);
-		$row = (new Row())
-			->setClass('row justify-content-left');
+		$row = (new Div())
+			->setClass('grid-3');
 		$this->add($row);
 		if (!empty($actions)) {
 			$moduleId = $actions[0]->getModule()->getId();
 			$moduleIdInput->setValue($moduleId);
 		}
 		foreach ($actions as $action) {
-			$card = (new InfoCard($action->getName()))
-				->setClass('col-3');
+			$card = (new InfoCard($action->getName()));
 			$row->add($card);
 			$actionId = $action->getId();
 			$input = (new HiddenInput("actions[$actionId]"))
@@ -56,7 +56,7 @@ class RoleActionAuthorizationView extends Form
 		$button = (new SubmitButton('Authorise'))
 			->setClass('btn btn-primary float-right');
 		$buttonRow = (new Row())
-			->setClass('mt-3 justify-content-center')
+			->setClass('mt-12 justify-center')
 			->add($button);
 		$this->setAction("/authorizations/actions")
 			->setMethod('POST')

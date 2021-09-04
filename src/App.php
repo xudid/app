@@ -5,12 +5,14 @@ namespace App;
 use App\CoreModule\AuthorizationModule\Controller\AuthorizationController;
 use App\Module\Module;
 use App\Pipeline\Pipeline;
+use App\Session\Session;
 use DI\ContainerBuilder;
 use DI\DependencyException;
 use DI\NotFoundException;
 use Entity\Model\Autoloader;
 use Entity\Model\ManagerFactory;
 use Entity\Model\ManagerInterface;
+use Entity\Model\ModelManager;
 use Exception;
 use GuzzleHttp\Psr7\Response;
 use GuzzleHttp\Psr7\ServerRequest;
@@ -36,6 +38,7 @@ class App
 	 */
 	private array $moduleClassNames = [];
 	private array $errors = [];
+	private array $infos = [];
 	private static ContainerInterface $container;
 	private string $appName;
 	private Pipeline $pipeline;
@@ -63,6 +66,7 @@ class App
 
 	private function __construct()
 	{
+		// Chargement de la Configuration
 		self::$instance = $this;
 
 		// make convention on definitions path + Configuration class in App package
@@ -92,9 +96,10 @@ class App
 
 		$this->appName = self::$config['app_name'];
 
-
+		// Gestion des loaders pour le cache du code généré
 		Autoloader::register(self::$cache);
 
+		// Initialisation de l'injection de dépendance
 		$this->containerBuilder = new ContainerBuilder();
 		$this->moduleClassNames = array_merge(
 			self::getCoreModules(),
@@ -114,7 +119,7 @@ class App
 
 		try {
 			self::$container = $this->containerBuilder->build();
-
+	// Chargement des routes
 			$this->loadRoutes(self::getApplicationRoutes());
 			foreach ($this->moduleClassNames as $moduleClassName) {
 				if (is_string($moduleClassName)) {
@@ -122,7 +127,11 @@ class App
 					$this->loadRoutes($routes);
 				}
 			}
-
+	// Initialisation du Pipeline et charement des middlewares
+	// le pipeline sera installé a part
+			// déclaration dans le fichier de déclaration du container
+			// middlewares déclarés dans le fichier de déclaration du container a la clef middlewares
+			// déclaration de construction des middlewares dans le meme fichier
 			// create middleware pipeline
 			$this->pipeline = self::$container->get(Pipeline::class);
 			$pipes = self::$config['pipeline'];
@@ -173,14 +182,30 @@ class App
 		// table Module primary key id  Module namespace
 		// table Action id pk module_id fk name
 		// table Autorization id User id Action fk
-
 		$actions = AuthorizationController::authorizedAction($moduleClass);
+		$moduleClass = explode('\\', $moduleClass);
+
+		$moduleClass = $moduleClass[array_key_last($moduleClass)];
+		$moduleClass = str_replace('Module', '', $moduleClass) . 's';
+		$expectedRoutes = [];
+		foreach ($types as $type) {
+			if ($type == 'LIST') {
+				$expectedRoutes[] = strtolower($moduleClass);
+			} else {
+				$expectedRoutes[] = strtolower($moduleClass . '_' . $type);
+			}
+		}
+		$actionsKeys = array_column($actions, 'route_name');
+		$actions = array_combine($actionsKeys, array_values($actions));
 		$autorizations = [];
-		foreach ($actions as $action) {
-			if ((count($types) == 0)) {
-				$autorizations[$action['type']] = $action['route_name'];
-			} elseif (in_array($action['type'], $types)) {
-				$autorizations[$action['type']] = $action['route_name'];
+		foreach ($expectedRoutes as $expectedRoute) {
+			if (array_key_exists($expectedRoute, $actions)) {
+				$action = $actions[$expectedRoute];
+				if ((count($types) == 0)) {
+					$autorizations[$action['type']] = $action['route_name'];
+				} elseif (in_array($action['type'], $types)) {
+					$autorizations[$action['type']] = $action['route_name'];
+				}
 			}
 
 		}
@@ -224,8 +249,7 @@ class App
 	public function run()
 	{
 		$response = new Response();
-		$request = ServerRequest::fromGlobals();
-		$response = $this->pipeline->process($request, $response);
+		$response = $this->pipeline->process(App::get('request'), $response);
 		if ($response) {
 			$statuscode = $response->getStatusCode();
 			switch ($statuscode) {
@@ -262,7 +286,9 @@ class App
 	{
 		if (self::$container && self::$container->has($key)) {
 			return self::$container->get($key);
-		} else {
+		} elseif (array_key_exists($key, self::$config)) {
+			return self::$config[$key];
+		}else {
 			return null;
 		}
 	}
@@ -270,7 +296,21 @@ class App
 	public static function render($view)
 	{
 		$renderer = self::get(Renderer::class);
-		$renderer->setAppPage(new Page());
+		$page = new Page();
+		$messages = Session::get('messages') ?? [];
+		if ($messages) {
+			if (array_key_exists('infos', $messages)) {
+				$page->setInfos($messages['infos']);
+				unset($messages['infos']);
+				Session::set('messages',$messages);
+			}
+			if (array_key_exists('errors', $messages)) {
+				$page->setErrors($messages['errors']);
+				unset($messages['errors']);
+				Session::set('messages',$messages);
+			}
+		}
+		$renderer->setAppPage($page);
 		return $renderer->renderAppPage($view);
 	}
 
@@ -292,6 +332,30 @@ class App
 	public static function tempDir()
 	{
 		return self::$temp;
+	}
+
+	public function getModuleDeclarations()
+	{
+		$filename = self::getConfigDir() . DIRECTORY_SEPARATOR . 'modules.php';
+		if (file_exists($filename)) {
+			$modules = require $filename;
+		}
+		return $modules ?? [];
+	}
+
+	public function addModuleDeclaration($module)
+	{
+		$existingModules = $this->getModuleDeclarations();
+		$modules = array_merge($existingModules, [$module]);
+		$filename = self::getConfigDir() . DIRECTORY_SEPARATOR . 'modules.php';
+		$fileContent = '<?php' . PHP_EOL . 'return [';
+		foreach ($modules as $module) {
+			$fileContent .= "'$module'". PHP_EOL;
+		}
+		$fileContent .='];';
+
+		file_put_contents($filename, $fileContent);
+
 	}
 
 	public static function send($content)
@@ -322,20 +386,22 @@ class App
 	public function getModelManager(string $classNamespace, string $managerInterfaceName = ''): ?ManagerInterface
 	{
 		try {
-			$factory = self::get(ManagerFactory::class);
-			$factory->setProxyCachePath(self::$cache);
-			if (class_exists($managerInterfaceName)) {
-				$factory->setManagerInterface($managerInterfaceName);
-
-				return $factory->getManager($classNamespace);
-			} elseif (class_exists($classNamespace)) {
-				return $factory->getManager($classNamespace);
-			} else {
+				$factory = self::get(ManagerFactory::class);
+				$factory->setProxyCachePath(self::$cache);
+				if (class_exists($managerInterfaceName)) {
+					$factory->setManagerInterface($managerInterfaceName);
+					return $factory->getManager($classNamespace);
+				} elseif (class_exists($classNamespace)) {
+					// reset managerInterface when not specified
+					$factory->setManagerInterface(ModelManager::class);
+					return $factory->getManager($classNamespace);
+				} else {
 				return null;
-			}
+				}
 
 		} catch (Exception $e) {
 			App::render('Failed to create model manager for : ' . $classNamespace);
+			return null;
 		}
 	}
 
@@ -343,16 +409,21 @@ class App
 	 * @param string $class
 	 * @return object|null
 	 * @throws Exception
+	 * @deprecated
 	 */
 
-	public function internalError(string $message)
+	public function showError(string $message)
 	{
-		echo '<pre>' . var_dump($message);
+		$this->errors[] = $message;
 	}
 
+	/**
+	 * @deprecated
+	 * @param string $message
+	 */
 	public function showInfo(string $message)
 	{
-		// Todo return a 200 response displaying info $message
+		$this->infos[] = $message;
 	}
 
 	private function loadContainerDefinitions($className)

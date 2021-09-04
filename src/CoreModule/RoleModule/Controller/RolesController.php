@@ -2,12 +2,13 @@
 
 namespace App\CoreModule\RoleModule\Controller;
 
-
+use App\App;
 use App\Controller;
 use App\CoreModule\ManagerModule\Model\Action;
 use App\CoreModule\ManagerModule\Model\Module;
 use App\CoreModule\RoleModule\Model\Role;
 use App\CoreModule\RoleModule\Model\RolesManager;
+use App\CoreModule\RoleModule\RoleModule;
 use App\CoreModule\RoleModule\Views\ActionEditionForm;
 use App\CoreModule\RoleModule\Views\ModuleEditionForm;
 use Entity\SearchBinder;
@@ -32,8 +33,9 @@ use Ui\Widgets\Table\TableLegend;
 class RolesController extends Controller
 {
 	private $modelNamespace = 'App\CoreModule\RoleModule\Model\Role';
+	private $moduleClass = RoleModule::class;
 
-	function __construct()
+	public function __construct()
 	{
 		parent::__construct();
 	}
@@ -46,8 +48,13 @@ class RolesController extends Controller
 		try {
 			$factory = new FormFactory(Role::class);
 			$factory->setFormTitle('Nouveau role');
-			return $factory->getForm($this->app);
-		} catch (\ReflectionException $e) {
+			$url = $this->router->generateUrl('roles_create',[], 'POST');
+			$factory->withAction($url);
+			$form = $factory->getForm();
+		} catch (\ReflectionException $exception) {
+			$form = $this->processError($exception->getMessage());
+		} finally {
+			return $this->render($form);
 		}
 
 	}
@@ -57,19 +64,18 @@ class RolesController extends Controller
 	 */
 	public function edit($id)
 	{
-		$manager = $this->app->getModelManager(Role::class);
-		$role = $manager->findById($id);
+		$role = $this->modelManager(Role::class)->findById($id);
 		if ($role == false) {
-			return $this->showError("Role not found");
+			$this->alert("Role not found", 'error');
 		}
 
 		try {
-			$factory = new FormFactory($role);
-			$factory->withAction('/roles/update');
-			$factory->setFormTitle("Edition role ");
-			return $factory->getForm($this->app);
+			$this->formFactory(Role::class)
+				->withAction('/roles/update')
+				->setFormTitle("Edition role ");
+			return $this->formFactory->getForm();
 		} catch (ReflectionException $e) {
-			$this->app->internalError('Error in : ' . __CLASS__ . ', ' . __METHOD__);
+			$this->processError('Error in : ' . __CLASS__ . ', ' . __METHOD__);
 		}
 	}
 
@@ -79,22 +85,28 @@ class RolesController extends Controller
 	public function show($params)
 	{
 		$id = $params[0];
+		$manager = $this->modelManager(Role::class, RolesManager::class);
+		$role = $manager->findById($id);
 		$viewFactory = $this->entityViewFactory(Role::class, $id);
+		$viewFactory->setCurrentPath("/roles/:id");
 		$viewFactory->basic();
-		$manager = $this->modelManager(Role::class);
-		$builder = $manager->builder();
-		$request = $builder->select('modules.*')
-			->from('modules')
-			->join('roles_modules', 'modules.id', 'modules_id')
-			->where('roles_id', '=', $id)
-			->where('authorized', '=', 1);
-		$results = $builder->execute($request);
+
+		$actions = App::autorize($this->moduleClass, ['EDIT', 'DELETE', 'NEW','LIST', 'SEARCH']);
+		foreach ($actions as $action => $routeName) {
+			$url = $this->router->generateUrl($routeName, ['id' => $id]);
+			$viewFactory->useAction($action, $url);
+		}
+
+		$results = $manager->getRoleAuthorizedModules($role);
+
 		$url = $this->router->generateUrl('roles_modules',['id' => $id], 'GET' );
+
 		$icon = new MaterialIcon('build');
 		$icon->color('white')->size('xs');
 		$span = new Span('Modules');
 		$span->setAttribute('style', 'vertical-align:bottom;');
-		$legendA = (new A($icon . ' ' . $span, $url))->setClass('btn btn-xs btn-success mb-1');
+
+		$legendA = (new A($icon . ' ' . $span, $url))->setClass('btn btn-xs btn-success mb-1 py-4 px-8');
 		$table = new DivTable(
 			[new TableLegend($legendA)],
 			ColumnsFactory::make(Module::class),
@@ -103,9 +115,10 @@ class RolesController extends Controller
 			'/modules'
 
 		);
+
 		//$viewFactory->filter(Module::class)->where('authorized', '=', 1)->
 		$viewFactory->addAssociationView($table);
-		$viewFactory->setCurrentPath("/roles/:id");
+
 		$ev = $viewFactory->getView();
 		return $ev;
 	}
@@ -130,8 +143,7 @@ class RolesController extends Controller
 	public function delete($params)
 	{
 		$id = $params[0];
-		$this->app->getModelManager(Role::class)
-			->delete($id);
+		$this->modelManager(Role::class)->delete($id);
 		$this->app->redirectTo('/roles/');
 	}
 
@@ -193,7 +205,6 @@ class RolesController extends Controller
 	{
 		try {
 			$dtv = ($this->tableFactory(Role::class))->withBaseUrl("/roles");
-			$dtv->setRouter($this->router);
 			$legendTitle = new TableLegend("<h2>Liste des roles</h2>", TableLegend::TOP_LEFT);
 			$addButton = new AddButton();
 			$addButton->size('xs')->setOnClick("location.href='/roles/new'");

@@ -7,7 +7,7 @@ form {
     margin-bottom: 10px;
 }
 
-.form-input {
+.form-control {
     width: 100%;
     margin: 0.5rem;
     padding: 0.3rem 0.5rem;
@@ -50,13 +50,7 @@ form select{
     margin:10px;
 }
 
-form button{
-    display:block;
-    width: 110px;
-    margin:0 auto;
-    margin-top: 10px;
-    margin-bottom: 10px;
-}
+
 
 form button:hover{
 

@@ -8,7 +8,9 @@ use App\App;
 use App\Controller;
 use App\CoreModule\ManagerModule\Model\Action;
 use App\CoreModule\ManagerModule\Model\Module;
+use App\CoreModule\SetupModule\Controller\SetupController;
 use App\CoreModule\UserModule\Model\User;
+use App\Module\Module as ApplicationModule;
 use GuzzleHttp\Psr7\ServerRequest;
 use ReflectionException;
 use Ui\Handler\RequestHandler;
@@ -35,10 +37,10 @@ class ModuleManagerController extends Controller
 			$dtv = $this->tableFactory(Module::class)
 				->withBaseUrl('/modules');
 
-			$legendTitle = new TableLegend("<h4>Liste des modules</h4>", TableLegend::TOP_RIGHT);
+			$legendTitle = new TableLegend("<h4>Liste des modules</h4>", TableLegend::TOP_LEFT);
 			$addButton = new AddButton();
 			$addButton->setOnClick("location.href='/modules/new'");
-			$legendButton = new TableLegend($addButton, TableLegend::TOP_LEFT);
+			$legendButton = new TableLegend($addButton, TableLegend::TOP_RIGHT);
 			$dtv->addALegend($legendTitle);
 			$dtv->addALegend($legendButton);
 			return $this->render($dtv->getView($this->app));
@@ -51,7 +53,7 @@ class ModuleManagerController extends Controller
 	{
 		$formFactory = $this->formFactory(Module::class);
 		$formFactory->withAction('/modules/create');
-		return $this->render($formFactory->getForm($this->app));
+		return $this->render($formFactory->getForm());
 	}
 
 	public function create()
@@ -59,10 +61,25 @@ class ModuleManagerController extends Controller
 		$handler = new RequestHandler(ServerRequest::fromGlobals());
 		$module = new Module([]);
 		$handler->handle($module);
-		$moduleManager = $this->modelManager(Module::class);
-		$moduleManager->insert($module);
-		$this->redirect('/modules/'. $module->getId());
+		$moduleClass = $module->getModuleClass();
+		if (ApplicationModule::exists($moduleClass)) {
+			$moduleManager = $this->modelManager(Module::class);
+			if (!$module->getName()) {
+				$module->setName($moduleClass::getName());
+			}
+			if (!$module->getDescription()) {
+				$module->setDescription($moduleClass::getDescription());
+			}
 
+			$moduleManager->insert($module);
+			$setupController = $this->get(SetupController::class);
+			$setupController->installModule($module->getModuleClass());
+			$this->app->addModuleDeclaration($module->getModuleClass());
+			$setupController->installModuleActions($module);
+			$this->redirect('/modules/');
+		} else {
+			$this->redirect('/modules/new');
+		}
 	}
 
 	public function show($id)
@@ -77,16 +94,25 @@ class ModuleManagerController extends Controller
 		if ($module == false) {
 			return $this->render("Module not found");
 		} else {
-
 			try {
 				$factory = $this->formFactory($module)
-					->withAction('/modules/update');
-				return $this->render($factory->getForm($this->app));
+					->withAction('/modules/update/' . $module->getId());
+				return $this->render($factory->getForm());
 			} catch (ReflectionException $e) {
-				$this->app->internalError('Failure in Modules Managment subsystem');
+				$this->processError($e->getMessage());
+				//$this->app->internalError('Failure in Modules Managment subsystem');
 			}
 		}
+	}
 
+	public function update($id)
+	{
+		$manager = $this->modelManager(Module::class);
+		$module = $manager->findById($id);
+		$this->handleRequest($module);
+		$manager->enableDebug();
+		$this->modelManager(Module::class)->update($module);
+		$this->routeTo('modules_show', ['id' => $module->getId()]);
 	}
 
 	public function actions(int $moduleId)
@@ -100,7 +126,6 @@ class ModuleManagerController extends Controller
 	{
 		$moduleManager = $this->app->getModelManager(Module::class);
 		$module = $moduleManager->findById($moduleId);
-		dump($module);
 		if ($module) {
 			$factory = new FormFactory(Action::class);
 			$factory->addHiddenInput((new HiddenInput('module_id'))->setValue($moduleId));

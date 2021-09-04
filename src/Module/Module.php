@@ -19,6 +19,10 @@ class Module implements ModuleInterface
 	 */
 	protected static bool $isMetamodule = false;
 
+	/**
+	 * @var ModuleInfo $moduleInfo
+	 */
+	protected ?ModuleInfo $moduleInfo = null;
 
 	/**
 	 * @var array $dependencies
@@ -52,17 +56,49 @@ class Module implements ModuleInterface
 		return static::$description;
 	}
 
-	public static function getMigrationsDir(string $className)
+	public function getRoutes() : array
 	{
-		return static::getDir($className) . DIRECTORY_SEPARATOR . 'migrations';
+		$routesFileName = static::getDir() . DIRECTORY_SEPARATOR . 'routes.php';
+		if (file_exists($routesFileName)) {
+			$routes = require $routesFileName;
+		}
+		return $routes ?? [];
 	}
-
 	/**
 	 * @return bool
 	 */
 	public static function isMetaModule() : bool
 	{
 		return self::$isMetamodule;
+	}
+
+
+	public function getModuleInfo()
+	{
+		return $this->moduleInfo;
+	}
+
+	/**
+	 * @param $displayType
+	 * @param string $display
+	 * @param string $alternateDisplay
+	 * @param string $path
+	 * @param string $displayside
+	 */
+	public function setModuleInfo(
+		$displayType, string $display,
+		string $alternateDisplay,
+		string $path,
+		string $displayside = "left")
+	{
+		$this->moduleInfo = new ModuleInfo(
+			$displayType,
+			$display,
+			$alternateDisplay,
+			$path
+		);
+
+		$this->moduleInfo->setDisplaySide($displayside);
 	}
 
 	/**
@@ -99,19 +135,34 @@ class Module implements ModuleInterface
 		return self::$dependencies;
 	}
 
+
+
+
+	public function getSubModuleClassNames(): array
+	{
+		// TODO: Implement getSubModuleClassNames() method.
+		return [];
+	}
+
 	public static function exists(string $className) : bool
 	{
 		return class_exists($className) && is_subclass_of($className, Module::class);
 	}
 
+	public static function getMigrationsDir(string $className)
+	{
+		return static::getDir($className) . DIRECTORY_SEPARATOR . 'migrations';
+	}
+
 	public static function  install(DaoInterface $dao, string $database, string $environment)
 	{
 		$adapter = new PhinxAdapter($dao, static::getDir(), $environment);
-		$adapter->setDbName($database);
-		$adapter->enableOutPut();
-		$adapter->run();
-		//dump($adapter->getOutput());
 
+		$adapter->setDbName($database);
+
+		$adapter->enableOutPut();
+
+		$adapter->run();
 	}
 
 
