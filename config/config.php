@@ -17,7 +17,6 @@ return [
         App\CoreModule\AuthModule\AuthModule::class,
         App\CoreModule\AuthorizationModule\AuthorizationModule::class,
         App\CoreModule\ManagerModule\ManagerModule::class,
-        //App\CoreModule\RendererModule\RendererModule::class,
         App\CoreModule\RoleModule\RoleModule::class,
         App\CoreModule\UserModule\UserModule::class,
     ],
