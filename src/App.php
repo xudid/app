@@ -32,6 +32,7 @@ use function Http\Response\send;
 class App
 {
     public static $configDirectory;
+    private static string $appPageClass;
     private array $moduleClassNames = [];
     private array $modulesInstances = [];
     private array $modulesInfos = [];
@@ -355,10 +356,18 @@ class App
         }
     }
 
+    public static function setAppPageClass($class)
+    {
+       static::$appPageClass = $class;
+    }
+
     public static function render($view)
     {
         $renderer = self::get(Renderer::class);
-        return $renderer->setAppPage(new Page())
+        $appPage = new static::$appPageClass;
+        $appPage->importCss(...static::get('css'));
+        $appPage->importScript(...static::get('js'));
+        return $renderer->setAppPage($appPage)
             ->renderAppPage($view);
     }
 
