@@ -163,16 +163,6 @@ class App
 
     }
 
-    public function accessModules()
-    {
-        $user = Session::get('user');
-        $controller = App::get(AuthorizationController::class);
-        if ($user) {
-            return[Stock\StockModule::class];
-        }
-        return [CoreModule\AuthModule\AuthModule::class];
-    }
-
     /**
      * @return array
      */
