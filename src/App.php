@@ -5,13 +5,11 @@ namespace App;
 use App\CoreModule\AuthorizationModule\Controller\AuthorizationController;
 use App\Module\Module;
 use App\Pipeline\Pipeline;
-use App\Session\Session;
+use Core\Contracts\ManagerInterface;
 use DI\ContainerBuilder;
 use DI\DependencyException;
 use DI\NotFoundException;
-use Entity\Database\Dao;
-use Entity\Database\Mysql\MysqlDataSource;
-use Entity\Model\ManagerInterface;
+use Core\Contracts\DaoInterface;
 use Exception;
 use GuzzleHttp\Psr7\Response;
 use GuzzleHttp\Psr7\ServerRequest;
@@ -396,7 +394,7 @@ class App
         $response = new Response();
         $response->getBody()->rewind();
 
-        $response->getBody()->write($content);
+        $response->getBody()->write((string)$content);
         send($response);
         exit();
     }
@@ -416,11 +414,11 @@ class App
         exit();
     }
 
-    public function getModelManager(string $classNamespace, string $managerInterfaceName = '') : ManagerInterface
+    public function modelManager(string $classNamespace, string $managerInterfaceName = ''): ?ManagerInterface
     {
         try {
             $factory = self::get('model_manager_factory');
-            if(class_exists($managerInterfaceName)) {
+            if (class_exists($managerInterfaceName)) {
                 $factory->setManagerInterface($managerInterfaceName);
 
                 return $factory->getManager($classNamespace);
@@ -431,6 +429,7 @@ class App
         } catch (Exception $e) {
             App::render('Failed to create model manager for : ' . $classNamespace);
         }
+        return null;
     }
 
     /**
@@ -500,7 +499,8 @@ class App
                 $migrationsDir = $dir . DIRECTORY_SEPARATOR . 'migrations';
                 if (file_exists($migrationsDir)) {
                     try {
-                        $moduleClassName::install((new Dao($this->get(MysqlDataSource::class),'')), 'development');
+                        $dao = $this->get(DaoInterface::class);
+                        $moduleClassName::install($dao, 'development');
                     } catch (Exception $e) {
                     }
                 }
