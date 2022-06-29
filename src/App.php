@@ -226,26 +226,6 @@ class App
             $this->errors[] = "Module $moduleClassName not Found";
         }
     }*/
-    private function initModule($className)
-    {
-
-    }
-
-    //todo populate the navbar in AppPage
-
-    private function loadModuleInfo($module)
-    {
-        $infos = $module->getModuleInfo();
-        if (!is_null($infos)) {
-            $this->modulesInfos[$module->getScope()] = $infos;
-            /*$this->renderer->addNavBarItem($infos->getNavBarDisplayType(),
-                $infos->getPath(),
-                $infos->getNavBarDisplay(),
-                $infos->getAlternateDisplay(),
-                $infos->getDisplaySide()
-            );*/
-        }
-    }
 
     /**
      * @return array|mixed
