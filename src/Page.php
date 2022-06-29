@@ -1,27 +1,20 @@
 <?php
 
-
 namespace App;
 
-
-use App\CoreModule\UserModule\Model\User;
-use App\CoreModule\UserModule\Views\UserAuthFormFilter;
 use App\Session\Session;
-use Ui\HTML\Elements\Empties\Br;
-use Ui\HTML\Elements\Nested\A;
-use Ui\HTML\Elements\Nested\Div;
-use Ui\Views\FormFactory;
-use Ui\Widgets\Cards\InfoCard;
-use Ui\Widgets\Toolbars\Action;
-use Ui\Widgets\Views\AppPage;
-use Ui\Widgets\Views\Modal;
-use Ui\Widgets\Views\NavbarItem;
+use Ui\HTML\Element\Simple\Br;
+use Ui\HTML\Element\Nested\A;
+use Ui\HTML\Element\Nested\Div;
+use Ui\Widget\Card\Info;
+use Ui\Widget\Toolbar\Action;
+use Ui\Widget\View\AppPage;
+use Ui\Widget\View\Modal;
+use Ui\Widget\View\Navbar\Item;
+use Ui\X;
 
 class Page extends AppPage
 {
-    /**
-     * Page constructor.
-     */
     public function __construct()
     {
         parent::__construct();
@@ -33,15 +26,14 @@ class Page extends AppPage
 
         $accountModalContent  = new Div();
         $accountMenu = new Modal('account_modal', $accountModalContent);
-        $accountMenu->popup()->setClass('popup popup-sm centered');
         $accountMenu->content()->setClass('justify-center');
 
         if (Session::has('user')) {
             $usersBar = new Action(['LIST' => $router->generateUrl('users'), 'ADD' => $router->generateUrl('users_new'), 'SEARCH' => $router->generateUrl('users_search')]);
-            $usersCard = new InfoCard('Utilistateurs', 'test');
+            $usersCard = new Info('Utilistateurs', 'test');
             $usersCard->body()->add($usersBar);
             $rolesBar = new Action(['LIST' => $router->generateUrl('roles_index'), 'ADD' => $router->generateUrl('roles_new'), 'SEARCH' => 'roles_search']);
-            $rolesCard = new InfoCard('Roles', 'test');
+            $rolesCard = new Info('Roles', 'test');
             $rolesCard->body()->add($rolesBar);
             $modalMenuContent1 = new Div(
                 $usersCard,
@@ -70,28 +62,25 @@ class Page extends AppPage
             $user = Session::get('user');
             $detailButton = (new A('My Account', '/users/myaccount'))->setClass('btn btn-success');
             $logoutButton = (new A('Logout', '/logout'))->setClass('button');
-            $accountCard = new InfoCard($user->getName(), $detailButton);
+            $accountCard = new Info($user->getName(), $detailButton);
             $accountCard->body()->setClass('text-center');
             $accountCard->footer()->add($logoutButton)->setClass('d-flex justify-center');
             $accountMenu->setTriggerText($user->getName());
             $accountModalContent->add($accountCard);
             $this->feedNavbarLeft(
-                new NavbarItem($modalMenu),
-                new NavbarItem($modalMenu2),
-                new NavbarItem($modalMenu3),
+                new Item($modalMenu),
+                new Item($modalMenu2),
+                new Item($modalMenu3),
 
             );
-            $this->feedNavbarRight(new NavbarItem($accountMenu, NavbarItem::RIGHT),);
+            $this->feedNavbarRight(new Item($accountMenu, Item::RIGHT),);
         } else {
-            //dump(new  LoginForm(new Controller()));
-
-            $formFilter = new UserAuthFormFilter();
-            $factory = new FormFactory(User::class);
-            $factory->setFormTitle('Login');
-            $factory->withAction('/auth');
-            $factory->setAccessFilter($formFilter);
             $accountMenu->setTriggerText('Login');
-            $form = $factory->getForm();
+            $form = X::Form(
+                X::TextField()->label('Identifiant')->name('username'),
+                X::TextField()->label('Mot de passe')->name('password'),
+                X::Button('Valider')
+            );
             $form->setClass('text-center');
             $linkContainer = (new Div(
                 new A('Identifiant oublié', ''),
@@ -100,7 +89,7 @@ class Page extends AppPage
             ));
             $form->add($linkContainer);
             $accountModalContent->add($form);
-            $this->feedNavbarRight(new NavbarItem($accountMenu, NavbarItem::RIGHT),);
+            $this->feedNavbarRight(new Item($accountMenu, Item::RIGHT),);
         }
     }
 }
