@@ -410,7 +410,7 @@ class App
     private function loadContainerDefinitions($className)
     {
         if (class_exists($className) && is_subclass_of($className, Module::class)) {
-            $dir =$className::getDir();
+            $dir = $className::getDir();
             if (file_exists($dir)) {
                 $diFileName = $dir . DIRECTORY_SEPARATOR . 'di.php';
                 if (file_exists($diFileName)) {
@@ -423,30 +423,27 @@ class App
 
     private function loadRoutes(string $moduleClassName)
     {
+        $routes = [];
         $router = self::$container->get('router');
-        $router->get('/','default', function(){
-            return self::render('Root page');
-        });
-        $router->get('/home','home', function(){
-            return self::render('Home sweet home');
-        });
+        $routesFileNames = [static::$configDirectory . DIRECTORY_SEPARATOR . 'routes.php'];
         if (class_exists($moduleClassName) && is_subclass_of($moduleClassName, Module::class)) {
-            $dir =$moduleClassName::getDir();
+            $dir = $moduleClassName::getDir();
             if (file_exists($dir)) {
                 $routesFileName = $dir . DIRECTORY_SEPARATOR . 'routes.php';
                 if (file_exists($routesFileName)) {
-                    $routes = require $routesFileName;
-                    $routes = is_array($routes) ? $routes : [];
-                    foreach ($routes as $route) {
-                        $method = $route['method'] ?: '';
-                        if ($router->authorize($method)) {
-                            $routes[$method][$route['name']] = Route::hydrate($route);
-                        }
-                    };
-                    $router->setRoutes($routes);
+                    $routesFileNames[] = $routesFileName;
                 }
             }
+        }
 
+        foreach ($routesFileNames as $routesFileName) {
+            $routeDatas = require $routesFileName;
+            foreach ($routeDatas as $routeData) {
+                $method = $routeData['method'] ?: '';
+                if ($router->authorize($method)) {
+                    $router->addRoute($routeData['method'], $routeData['path'], $routeData['name'], $routeData['callback']);
+                }
+            }
         }
     }
 
