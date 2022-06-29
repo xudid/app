@@ -92,11 +92,11 @@ class App
                     $this->loadRoutes($moduleClassName);
                 }
             }
-            foreach ($this->moduleClassNames as $moduleClassName) {
+            /*foreach ($this->moduleClassNames as $moduleClassName) {
                 if (is_string($moduleClassName)) {
                     $this->installModule($moduleClassName);
                 }
-            }
+            }*/
             $authorizationcontroller = self::$container->get(AuthorizationController::class);
             $modules = $authorizationcontroller->getAuthorizedModules();
 
