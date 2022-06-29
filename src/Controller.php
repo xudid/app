@@ -4,28 +4,18 @@
 namespace App;
 
 
-use Entity\Model\ManagerFactory;
-use Entity\Model\Model;
-use GuzzleHttp\Psr7\Request;
+use Core\Contracts\ManagerInterface;
+use Core\Http\Handler\RequestHandler;
 use GuzzleHttp\Psr7\ServerRequest;
 use Psr\Http\Message\RequestInterface;
 use Router\Router;
-use Ui\Handler\RequestHandler;
-use Ui\Views\DataTableView;
-use Ui\Views\EntityViewFactory;
-use Ui\Views\FormFactory;
-use Ui\Views\SearchViewFactory;
 
 class Controller
 {
     protected Router $router;
-    /**
-     * @var App
-     */
     protected App $app;
-
     protected RequestInterface $request;
-
+    protected RequestHandler $requestHandler;
 
     public function __construct()
     {
@@ -45,50 +35,9 @@ class Controller
         App::redirectToRoute($routeName, $params);
     }
 
-
-
-    public function modelManager(string $class, string $managerClass = '')
+    public function modelManager(string $class, string $managerClass = ''):ManagerInterface
     {
-        return $this->app->getModelManager($class, $managerClass);
-    }
-
-    /**
-     * @return EntityViewFactory
-     */
-    public function entityViewFactory(string $class, int $id): EntityViewFactory
-    {
-        $factory = new EntityViewFactory($this->modelManager($class), $id);
-        $factory->setRouter($this->router);
-        return $factory;
-    }
-
-    /**
-     * @return FormFactory
-     */
-    public function formFactory($class): FormFactory
-    {
-        $factory = new FormFactory($class);
-        if($class instanceof Model) {
-            $class = $class::getClass();
-        }
-        $factory->setRouter($this->router)
-            ->setManager($this->modelManager($class));
-        return $factory;
-    }
-
-    public function searchViewFactory($class)
-    {
-        return new SearchViewFactory($class);
-    }
-
-    /**
-     * @return DataTableView
-     */
-    public function tableFactory(string $class): DataTableView
-    {
-        $factory = new DataTableView($class, $this->modelManager($class));
-        $factory->setRouter($this->router);
-        return $factory;
+        return $this->app->modelManager($class, $managerClass);
     }
 
     public function render($content)
