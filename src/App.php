@@ -16,15 +16,10 @@ use GuzzleHttp\Psr7\ServerRequest;
 use Psr\Container\ContainerInterface;
 use Psr\Http\Server\MiddlewareInterface;
 use Renderer\Renderer;
-use Router\Route;
-use Router\Router;
 use function Http\Response\send;
-
 
 /**
  * Class App
- * Container must define keys :app_name , "app_name"_modules
- * @package App
  * @author Didier Moindreau <dmoindreau@gmail.com> on 07/11/2019.
  */
 class App
@@ -37,12 +32,11 @@ class App
     private array $errors = [];
     private static ContainerInterface $container;
     private string $appName;
-    private static string $name;
     private Pipeline $pipeline;
     private static string $root;
     private static string $temp;
     public static string $modules;
-    private static  $config;
+    private static $config;
     private static $instance;
     /**
      * @var ContainerBuilder
@@ -77,9 +71,9 @@ class App
             self::$config['core_modules'] ?? [],
             self::$config['app_modules'] ?? []
         );
-        spl_autoload_register(function($class){
+        spl_autoload_register(function ($class) {
             $fileClassName = str_replace('\\', DIRECTORY_SEPARATOR, $class);
-            $fileName = dirname($_SERVER['DOCUMENT_ROOT']) . DIRECTORY_SEPARATOR .  'classes' . DIRECTORY_SEPARATOR . $fileClassName . '.php';
+            $fileName = dirname($_SERVER['DOCUMENT_ROOT']) . DIRECTORY_SEPARATOR . 'classes' . DIRECTORY_SEPARATOR . $fileClassName . '.php';
             if (file_exists($fileName)) {
                 require_once $fileName;
             }
@@ -91,16 +85,12 @@ class App
             }
         }
 
-
-
         try {
-                self::$container = $this->containerBuilder->build();
+            self::$container = $this->containerBuilder->build();
             foreach ($this->moduleClassNames as $moduleClassName) {
                 if (is_string($moduleClassName)) {
                     $this->loadRoutes($moduleClassName);
                 }
-
-
             }
             foreach ($this->moduleClassNames as $moduleClassName) {
                 if (is_string($moduleClassName)) {
@@ -108,7 +98,7 @@ class App
                 }
             }
             $authorizationcontroller = self::$container->get(AuthorizationController::class);
-            $modules =$authorizationcontroller->getAuthorizedModules();
+            $modules = $authorizationcontroller->getAuthorizedModules();
 
             // create middleware pipeline
             $this->pipeline = self::$container->get(Pipeline::class);
@@ -127,7 +117,7 @@ class App
 
     public static function getInstance()
     {
-        if(is_null(self::$instance)) {
+        if (is_null(self::$instance)) {
             self::$instance = new App();
         }
         return self::$instance;
@@ -151,9 +141,9 @@ class App
 
     }
 
-    public static function autorize(string $moduleClass, array $types =[])
+    public static function autorize(string $moduleClass, array $types = [])
     {
-        // un utilisateur est autorisé a faire 0a n action appartenant a un module
+        // un utilisateur est autorisé a faire 0 a N actions appartenant a un module
         // Table User Table des modules Tables actions Table des actions
         // table Module primary key id  Module namespace
         // table Action id pk module_id fk name
@@ -162,14 +152,14 @@ class App
         $actions = AuthorizationController::authorizedAction($moduleClass);
         $autorizations = [];
         foreach ($actions as $action) {
-            if((count($types) == 0)) {
+            if ((count($types) == 0)) {
                 $autorizations[$action['type']] = $action['route_name'];
-            } elseif(in_array($action['type'], $types)) {
+            } elseif (in_array($action['type'], $types)) {
                 $autorizations[$action['type']] = $action['route_name'];
             }
 
         }
-        return$autorizations;
+        return $autorizations;
 
     }
 
@@ -374,7 +364,7 @@ class App
      */
     public static function getConfigDir()
     {
-        return self::$config['config_dir'] ;
+        return self::$config['config_dir'];
     }
 
     public static function setCongigDir(string $dir)
@@ -408,7 +398,6 @@ class App
     public static function redirectToRoute(string $routeName, array $params = [])
     {
         $router = self::get('router');
-        Router::class;
         $url = $router->generateUrl($routeName, $params);
         send((new Response())->withStatus(302)->withHeader('Location', $url));
         exit();
