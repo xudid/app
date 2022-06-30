@@ -2,7 +2,6 @@
 
 namespace App\CoreModule\UserModule;
 
-use App\App;
 use App\Module\Module;
 
 /**
@@ -10,8 +9,12 @@ use App\Module\Module;
  */
 class UserModule extends Module
 {
-    public static function getDir()
-    {
-        return __DIR__;
-    }
+	protected static string $name = 'User';
+	protected static string $description = <<<TEXT
+Participate to User authentication
+TEXT;
+	public static function getDir()
+	{
+		return __DIR__;
+	}
 }

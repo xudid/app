@@ -1,5 +1,7 @@
 <?php
-namespace Brick\Middleware;
+
+namespace App\CoreModule\UriNotFound\Middleware;
+
 use Interop\Http\Server\MiddlewareInterface;
 use Psr\Http\Message\ServerRequestInterface;
 use Psr\Http\Message\ResponseInterface;

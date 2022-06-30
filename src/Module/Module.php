@@ -14,10 +14,10 @@ use Entity\Migrations\PhinxAdapter;
  */
 class Module implements ModuleInterface
 {
-    /**
+	/**
 	 * @var bool $isMetamodule
 	 */
-	protected bool $isMetamodule = false;
+	protected static bool $isMetamodule = false;
 
 	/**
 	 * @var ModuleInfo $moduleInfo
@@ -27,65 +27,58 @@ class Module implements ModuleInterface
 	/**
 	 * @var array $dependencies
 	 */
-	protected array $dependencies = [];
-
-	/**
-	 * @var string $scope
-	 */
-	private string $scope = "scope";
+	protected static array $dependencies = [];
 
 	protected static string $name = '';
 	protected static string $description = '';
 
-    /**
-     * Module constructor.
-     * @param App $app
-     */
+	/**
+	 * Module constructor.
+	 */
 	function __construct()
 	{
 
 	}
 
-    /**
-     * @return string
-     */
-    public function getName(): string
-    {
-        return static::$name;
-    }
-
-    /**
-     * @return string
-     */
-    public static function getDescription(): string
-    {
-        return static::$description;
-    }
-
-
-
-    /**
-	 * @return bool
-	 */
-	public function isMetaModule()
-	{
-		return $this->isMetamodule;
-	}
-
-    /**
+	/**
 	 * @return string
 	 */
-	public function getScope()
+	public static function getName(): string
 	{
-		return $this->scope;
+		return static::$name;
 	}
 
-    public function getModuleInfo()
+	/**
+	 * @return string
+	 */
+	public static function getDescription(): string
+	{
+		return static::$description;
+	}
+
+	public function getRoutes() : array
+	{
+		$routesFileName = static::getDir() . DIRECTORY_SEPARATOR . 'routes.php';
+		if (file_exists($routesFileName)) {
+			$routes = require $routesFileName;
+		}
+		return $routes ?? [];
+	}
+	/**
+	 * @return bool
+	 */
+	public static function isMetaModule() : bool
+	{
+		return self::$isMetamodule;
+	}
+
+
+	public function getModuleInfo()
 	{
 		return $this->moduleInfo;
 	}
 
-    /**
+	/**
 	 * @param $displayType
 	 * @param string $display
 	 * @param string $alternateDisplay
@@ -108,23 +101,23 @@ class Module implements ModuleInterface
 		$this->moduleInfo->setDisplaySide($displayside);
 	}
 
-    /**
+	/**
 	 * @return bool
 	 */
-	public function hasDependencies(): bool
+	public static function hasDependencies(): bool
 	{
-		return count($this->dependencies) > 0;
+		return count(self::$dependencies) > 0;
 	}
 
-    /**
+	/**
 	 * @method checkDependencies(array $modulesInstances):bool
 	 * @param array $modulesInstances
 	 * @return bool|array : true if all dependencies are already loaded , an
 	 * array of missing dependencies else
 	 */
-	public function checkDependencies(array $modulesInstances)
+	public static function checkDependencies(array $modulesInstances)
 	{
-		$dependencies = $this->getDependencies();
+		$dependencies = self::getDependencies();
 		$missingDependencies = [];
 		foreach ($dependencies as $dependence) {
 			if (!array_key_exists($dependence, $modulesInstances)) {
@@ -134,48 +127,55 @@ class Module implements ModuleInterface
 		return empty($missingDependencies)?true:$missingDependencies;
 	}
 
-    /**
+	/**
 	 * @return array
 	 */
-	public function getDependencies(): array
+	public static function getDependencies(): array
 	{
-		return $this->dependencies;
+		return self::$dependencies;
 	}
 
 
 
 
-    public function getSubModuleClassNames(): array
-    {
-        // TODO: Implement getSubModuleClassNames() method.
-    }
+	public function getSubModuleClassNames(): array
+	{
+		// TODO: Implement getSubModuleClassNames() method.
+		return [];
+	}
 
-    public function getMigrationsPath()
-    {
-        // here or in DI definition above
-    }
+	public static function exists(string $className) : bool
+	{
+		return class_exists($className) && is_subclass_of($className, Module::class);
+	}
 
-    public static function  install(DaoInterface $dao, string $environment)
-    {
-        $adapter = new PhinxAdapter($dao, static::getDir(), $environment);
-        $adapter->setDbName('brickdb');
-        $adapter->enableOutPut();
-        $adapter->run();
-        //dump($adapter->getOutput());
+	public static function getMigrationsDir(string $className)
+	{
+		return static::getDir($className) . DIRECTORY_SEPARATOR . 'migrations';
+	}
 
-    }
+	public static function  install(DaoInterface $dao, string $database, string $environment)
+	{
+		$adapter = new PhinxAdapter($dao, static::getDir(), $environment);
+
+		$adapter->setDbName($database);
+
+		$adapter->enableOutPut();
+
+		$adapter->run();
+	}
 
 
 
-    public function update(DataSourceInterface $dataSource, string $environment)
-    {
-        // TODO: Implement update() method.
-    }
+	public static function update(DataSourceInterface $dataSource, string $environment)
+	{
+		// TODO: Implement update() method.
+	}
 
 
-    public function remove(DataSourceInterface $dataSource, string $environment)
-    {
-        // TODO: Implement remove() method.
-    }
+	public static function remove(DataSourceInterface $dataSource, string $environment)
+	{
+		// TODO: Implement remove() method.
+	}
 }
 

@@ -11,12 +11,12 @@ use App\Module\Module;
  */
 class LoggingModule extends Module
 {
-    protected static string $name = 'Logging';
-    protected static string $description = <<<TEXT
+	protected static string $name = 'Logging';
+	protected static string $description = <<<TEXT
 Provides application activities tracability in a file
 TEXT;
-    public static function getDir(): string
-    {
-        return __DIR__;
-    }
+	public static function getDir(): string
+	{
+		return __DIR__;
+	}
 }

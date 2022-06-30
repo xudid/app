@@ -15,75 +15,52 @@ use Psr\Http\Server\RequestHandlerInterface;
  */
 class AuthorizationMiddleware implements MiddlewareInterface
 {
-    private AuthController $authController;
-    private $url;
+	private AuthController $authController;
+	private AuthorizationController $authorizationController;
+	private array $defaultAllowedRoutes;
+	private ?ResponseInterface $response = null;
 
-    function __construct($authController)
-    {
-        $this->authController = $authController;
-    }
+	function __construct(AuthController $authController, AuthorizationController $authorizationController, array $defaultAllowedRoutes)
+	{
+		$this->authController = $authController;
+		$this->authorizationController = $authorizationController;
+		$this->defaultAllowedRoutes = $defaultAllowedRoutes;
 
-    /**
-     * Process a Request  and return a Response
-     * @param ServerRequestInterface $request
-     * @param RequestHandlerInterface $handler
-     * @return ResponseInterface
-     */
-    function process(ServerRequestInterface $request, RequestHandlerInterface $handler): ResponseInterface
-    {
-        $defaultAllowedRoutes = [
-            'default',
-            'login',
-            'logout',
-            'auth',
-            'get_reset_token',
-            'mail_reset_token',
-            'recovery_password',
-            'setup',// todo remove this as soon as possible
-        ];
-        $this->response = $handler->handle($request);
-        $user = $this->authController->isloggedin();
-        $route = $request->getAttribute('route');
-        if (!$route) {
-            $response = $handler->handle($request);
-            $response = $response->withStatus("404");
-            return $response;
-        }
-        if($route && in_array($route->getName(), $defaultAllowedRoutes)) {
-            $response = $handler->handle($request);
-            return $response;
-        }
-        // if user has role superadmin go on any existing ressource
-        if (!$user) {
-            $this->authController->saveAskedUrl($request->getUri()->getPath());
-            $response = $handler->handle($request);
-            $response = $response->withStatus("302");
-            $response = $response->withHeader("Location", "/login");
-            return $response;
-        } else {
-            $authorizationController = new AuthorizationController();
-            $authorized = $authorizationController->isAuthorize($user->getRoles(), $route->getName());
-            if($authorized) {
-                $response = $handler->handle($request);
-                return $response;
-            } else {
-                $response = $handler->handle($request);
-                $response = $response->withStatus("302");
-                $response = $response->withHeader("Location", "/login");
-                return $response;
-            }
-        }
-    }
+	}
 
-    /*
-    * @param ServerRequestInterface $request
-    * @param array $rights
-    * @return ResponseInterface;
-    */
-    private function processRights($handler, $request, $dest, $rights)
-    {
-        $response = $handler->handle($request);
-        return $response;
+	/**
+	 * Process a Request  and return a Response
+	 * @param ServerRequestInterface $request
+	 * @param RequestHandlerInterface $handler
+	 * @return ResponseInterface
+	 */
+	function process(ServerRequestInterface $request, RequestHandlerInterface $handler): ResponseInterface
+	{
+		$this->response = $handler->handle($request);
+		$route = $request->getAttribute('route');
 
-    }
+		if (!$route) {
+			$response = $this->response->withStatus("404");
+			return $response;
+		}
+
+		if(in_array($route->getName(), $this->defaultAllowedRoutes)) {
+			return $this->response;
+		}
+
+		$user = $this->authController->isloggedin();
+		$authorized = false;
+		if ($user) {
+			$authorized = $this->authorizationController
+				->isAuthorize($user->getRoles(), $route->getName());
+		}
+
+		if (!$user ||!$authorized) {
+			$this->authController->saveAskedUrl($request->getUri()->getPath());
+			$this->response = $this->response->withStatus("302");
+			$this->response = $this->response->withHeader("Location", "/login");
+			return $this->response;
+		}
+		return $this->response;
+	}
 }

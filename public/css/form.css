@@ -1,0 +1,63 @@
+form {
+    padding: 2rem;
+}
+.form-inline{
+    display: block;
+    margin-top: 10px;
+    margin-bottom: 10px;
+}
+
+.form-control {
+    width: 100%;
+    margin: 0.5rem;
+    padding: 0.3rem 0.5rem;
+    border: 1px solid  lightgrey;
+    border-radius: 0.25rem;
+    outline: none;
+}
+/*border-color primary light*/
+.form-input:hover {
+    border: 1px solid;
+    border-color: #5472d3;
+}
+
+.form-input:focus {
+    border: 2px solid;
+    border-color: #5472d3;
+    box-shadow: 3px 5px 5px lightgrey;
+}
+
+form [type="checkbox"]{
+    vertical-align: text-top;
+    display: inline;
+    margin: 10px auto;
+
+}
+
+form input[type="radio"]{
+    vertical-align: baseline;
+    display: inline;
+    margin: 10px auto;
+    border-radius: 5px;
+}
+
+form input :valid {
+    box-shadow: 0 0 2px 1px green;
+}
+
+form select{
+    width: 200px;
+    margin:10px;
+}
+
+
+
+form button:hover{
+
+
+}
+
+.form_title{
+    font-weight: bold;
+    font-size: 1.5em;
+}

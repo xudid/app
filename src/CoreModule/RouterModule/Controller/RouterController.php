@@ -13,14 +13,14 @@ use Ui\Widget\Table\ArrayTableFactory;
 use Ui\Widget\Table\Column\Column;
 use Ui\Widget\Table\Legend\TableLegend;
 
-class RouterController
+class RouterController extends Controller
 {
     private App $app;
     private Router $router;
 
     public function __construct()
     {
-        $this->app = App::getInstance();
+		parent::__construct();
     }
 
     public function index()
@@ -40,8 +40,8 @@ class RouterController
 
         if ($route) {
             $routeView->setTitle('Route ' . $route->getName())->setClass('large-30');
-            $parameters = $route->getParams();
-            $parameters = array_map(function ($name, $pattern){
+			$parameters = $route->getParams();
+			$parameters = array_map(function ($name, $pattern){
                 return ['name' => $name, 'pattern' => $pattern];
             }, array_keys($parameters), array_values($parameters));
             $source = new FileSource(sys_get_temp_dir() . 'translations.php');

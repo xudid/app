@@ -1,0 +1,70 @@
+
+/*Text*/
+/*Colors*/
+.text-white{
+    color: white;
+}
+.text-primary{
+    color:#0d47a1;
+}
+.text-secondary{
+    color:#6a1b9a;
+}
+/*Colors*/
+
+/*Alignement*/
+.text-center{
+    text-align:center
+}
+h1.text-center{
+    text-align:center
+}
+
+h2.text-center{
+    text-align:center
+}
+
+h3.text-center{
+    text-align:center
+}
+
+h4.text-center{
+    text-align:center
+}
+
+h5.text-center{
+    text-align:center
+}
+
+h6.text-center{
+    text-align:center
+}
+
+.text-right{
+    text-align: right;
+}
+.text-left{
+    text-align: left;
+}
+/*Alignement*/
+
+/*Decorations*/
+.no-text-decoration{
+    text-decoration: none;
+}
+
+.text-decoration-white{
+    text-decoration-color: white;
+}
+.text-decoration-primary{
+    text-decoration-color: #0d47a1;
+}
+.text-decoration-secondary{
+    text-decoration-color: #6a1b9a;
+}
+/*Decorations*/
+
+.text-truncate {
+    overflow: hidden;
+    text-overflow: ellipsis;
+}

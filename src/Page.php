@@ -15,6 +15,9 @@ use Ui\X;
 
 class Page extends AppPage
 {
+    /**
+     * Page constructor.
+     */
     public function __construct()
     {
         parent::__construct();
@@ -30,10 +33,11 @@ class Page extends AppPage
 
         if (Session::has('user')) {
             $usersBar = new Action(['LIST' => $router->generateUrl('users'), 'ADD' => $router->generateUrl('users_new'), 'SEARCH' => $router->generateUrl('users_search')]);
-            $usersCard = new Info('Utilistateurs', 'test');
+			$usersCard = new Info('Utilistateurs');
             $usersCard->body()->add($usersBar);
-            $rolesBar = new Action(['LIST' => $router->generateUrl('roles_index'), 'ADD' => $router->generateUrl('roles_new'), 'SEARCH' => 'roles_search']);
-            $rolesCard = new Info('Roles', 'test');
+
+			$rolesBar = new Action(['LIST' => $router->generateUrl('roles'), 'ADD' => $router->generateUrl('roles_new'), 'SEARCH' => 'roles_search']);
+			$rolesCard = new Info('Roles');
             $rolesCard->body()->add($rolesBar);
             $modalMenuContent1 = new Div(
                 $usersCard,
@@ -61,20 +65,21 @@ class Page extends AppPage
 
             $user = Session::get('user');
             $detailButton = (new A('My Account', '/users/myaccount'))->setClass('btn btn-success');
-            $logoutButton = (new A('Logout', '/logout'))->setClass('button');
-            $accountCard = new Info($user->getName(), $detailButton);
-            $accountCard->body()->setClass('text-center');
-            $accountCard->footer()->add($logoutButton)->setClass('d-flex justify-center');
-            $accountMenu->setTriggerText($user->getName());
-            $accountModalContent->add($accountCard);
-            $this->feedNavbarLeft(
-                new Item($modalMenu),
-                new Item($modalMenu2),
-                new Item($modalMenu3),
+			$logoutButton = (new A('Logout', '/logout'))->setClass('btn');
+			$accountCard = new Info($user->getName());
+			$accountCard->body()->setClass('text-center');
+			$accountCard->footer()->feed($detailButton, $logoutButton)->setClass('d-flex justify-center');
+			$accountMenu->setHeaderText('Logged as : ');
+			$accountMenu->setTriggerText($user->getName());
+			$accountModalContent->add($accountCard);
+			$this->feedNavbarLeft(
+				new Item($administrationMenu),
+				new Item($sequencingMenu),
+				new Item($stockMenu),
 
-            );
+			);
             $this->feedNavbarRight(new Item($accountMenu, Item::RIGHT),);
-        } else {
+		} else {
             $accountMenu->setTriggerText('Login');
             $form = X::Form(
                 X::TextField()->label('Identifiant')->name('username'),
@@ -89,7 +94,27 @@ class Page extends AppPage
             ));
             $form->add($linkContainer);
             $accountModalContent->add($form);
-            $this->feedNavbarRight(new Item($accountMenu, Item::RIGHT),);
+			$this->feedNavbarRight(new Item($accountMenu, Item::RIGHT),);
+
+		}
+	}
+
+	public function setInfos($infos = [])
+	{
+		foreach ($infos as $info) {
+			$p = new P($info);
+			$p->setClass('bg-primary-light px-16 py-16');
+			$this->setHeader(new P($p));
+		}
+
+	}
+
+	public function setErrors($errors = [])
+	{
+		foreach ($errors as $error) {
+			$p = new P($error);
+			$p->setClass('bg-danger-light px-16 py-16');
+			$this->setHeader(new P($p));
         }
     }
 }

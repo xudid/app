@@ -1,0 +1,91 @@
+.d-flex {
+    display: flex;
+}
+
+.d-row {
+    display: flex;
+    flex-direction: row;
+}
+
+.d-row-reverse {
+    display: flex;
+    flex-direction: row-reverse;
+}
+
+.d-column {
+    display: flex;
+    flex-direction: column;
+}
+
+.grid{
+    display: grid;
+    grid-gap: 10px;
+    grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+    grid-auto-rows: minmax(auto, auto);
+}
+
+.grid-2 {
+    grid-template-columns: repeat(2, 1fr);
+}
+
+.grid-3 {
+    grid-template-columns: repeat(3, 1fr);
+}
+
+.grid-4 {
+    grid-template-columns: repeat(4, 1fr);
+}
+
+.d-grid.card {
+    grid-column: auto;
+}
+
+d-column-reverse {
+    display: flex;
+    flex-direction: column-reverse;
+}
+.justify-start {
+    justify-content: start;
+}
+
+.justify-end {
+    justify-content: end;
+}
+
+.justify-space-between {
+    justify-content: space-between;
+}
+
+.justify-space-around {
+    justify-content: space-around;
+}
+
+.justify-space-evenly {
+    justify-content: space-evenly;
+}
+
+.justify-stretch {
+    justify-content: stretch;
+}
+
+.d-block {
+    display: block;
+}
+.d-inline {
+    display: inline;
+}
+
+.d-inline-block {
+    display: inline-block;
+}
+
+.d-table {
+    display: table;
+}
+
+.d-inline-table {
+    display: inline-table;
+}
+
+
+
