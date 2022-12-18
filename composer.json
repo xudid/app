@@ -1,6 +1,6 @@
 {
   "name": "xudid/app",
-  "description": "php applocation core",
+  "description": "php application core",
   "minimum-stability": "stable",
   "license": "MIT",
   "authors": [
@@ -9,11 +9,9 @@
       "email": "dmoindreau@gmail.com"
     }
   ],
-  "autoload":{
+  "autoload": {
     "psr-4": {
-        "App\\": "src/",
-      "Usage\\": "usage/",
-      "Modules\\": "modules/",
+      "App\\": "src/",
       "Controller\\": "controller/Controller/",
       "Middleware\\": "middlewares/Middleware/"
     }
@@ -25,10 +23,11 @@
     "robmorgan/phinx": "^0.12.1",
     "guzzlehttp/psr7": "^2.3",
     "http-interop/response-sender": "^1.0",
-    "xudid/core": ">=0.0.21",
-    "xudid/ui": "^0.128.6",
-    "xudid/router": "^0.07.0",
-    "xudid/renderer": "0.01.3"
+    "xudid/core": ">=0.0.20",
+    "xudid/ui": "^0.128.7",
+    "xudid/router": "^0.08.0",
+    "xudid/renderer": "0.01.3",
+    "nesbot/carbon": "^2.59"
   },
   "require-dev": {
     "psr/http-server-middleware": "^1.0",

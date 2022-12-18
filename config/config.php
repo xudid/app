@@ -7,7 +7,7 @@ return [
     'root_dir' => dirname($_SERVER['DOCUMENT_ROOT']),
     'config_dir' => dirname($_SERVER['DOCUMENT_ROOT']) .DIRECTORY_SEPARATOR.'config',
     'temp_dir' => dirname($_SERVER['DOCUMENT_ROOT']).DIRECTORY_SEPARATOR.'tmp',
-    'site_modules' => 'modules.php',
+    'cache_dir' => dirname($_SERVER['DOCUMENT_ROOT']).DIRECTORY_SEPARATOR.'cache',
 
     'core_modules' => [
         App\CoreModule\LoggingModule\LoggingModule::class,
@@ -15,6 +15,8 @@ return [
     ],
     'app_modules' => [
     ],
+
+    'site_modules' => dirname($_SERVER['DOCUMENT_ROOT']) .DIRECTORY_SEPARATOR.'config' . DIRECTORY_SEPARATOR . 'modules.php',
 
     'pipeline' =>[
         'router_middleware',

@@ -2,8 +2,7 @@
 
 namespace App\CoreModule\RouterModule\Controller;
 
-use App\App;
-use Router\Router;
+use App\Controller;
 use Ui\HTML\Element\Base\H3;
 use Ui\HTML\Element\Nested\Div;
 use Ui\HTML\Element\Nested\Section;
@@ -15,9 +14,6 @@ use Ui\Widget\Table\Legend\TableLegend;
 
 class RouterController extends Controller
 {
-    private App $app;
-    private Router $router;
-
     public function __construct()
     {
 		parent::__construct();
@@ -59,26 +55,27 @@ class RouterController extends Controller
         }
     }
 
-    private function routesTables()
+    private function routesTables(): array
     {
-        $nameColumn = new Column('name', 'Nom');
         $scopesTables = [];
         foreach ($this->router->getAuthorizedMethods() as $method) {
             $routes = $this->router->getRoutes()[$method] ?? [];
-            $methodScopes = array_keys($routes);
-            if (!$methodScopes) {
-                continue;
-            }
             $scopes = [];
-            foreach ( $methodScopes as $getScope) {
-                $scopes[]= ['name' => $getScope];
+            foreach ($routes as $route) {
+                $scopes[]= [
+                    'name' => $route->getName(),
+                    'path' => $route->getPath()
+                ];
             }
 
             $legend = new TableLegend($method, TableLegend::TOP_LEFT);
             $source = new FileSource(sys_get_temp_dir() . 'translations.php');
             $translator = new Translator($source);
             $tableFactory = new ArrayTableFactory($translator);
-            $tableFactory->setColumns($nameColumn)
+            $nameColumn = new Column('name', 'Nom');
+            $pathColumn = new Column('path', 'Chemin');
+
+            $tableFactory->setColumns($nameColumn, $pathColumn)
                          ->setLegends([$legend])
                          ->useData($scopes);
 

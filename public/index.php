@@ -1,6 +1,16 @@
 <?php
-require '../vendor/autoload.php';
+
 use App\App;
 
-$app = App::getInstance();
-$app->run();
+/**
+ * Application input point
+ */
+require '../vendor/autoload.php';
+try {
+    $app = App::getInstance();
+    $app::setAppPageClass(\Ui\Widget\View\AppPage::class);
+    $app->run();
+} catch (Exception $exception) {
+    dump($exception);
+}
+
